@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019 - 2020 Andri Yngvason
+ * Copyright (c) 2019 - 2022 Andri Yngvason
  *
  * Permission to use, copy, modify, and/or distribute this software for any
  * purpose with or without fee is hereby granted, provided that the above
@@ -19,7 +19,6 @@
 #include <assert.h>
 #include <stdbool.h>
 #include <sys/mman.h>
-#include <wayland-client-protocol.h>
 #include <wayland-client.h>
 #include <libdrm/drm_fourcc.h>
 #include <aml.h>
@@ -28,7 +27,7 @@
 #include "wlr-screencopy-unstable-v1.h"
 #include "buffer.h"
 #include "shm.h"
-#include "screencopy.h"
+#include "screencopy-interface.h"
 #include "smooth.h"
 #include "time-util.h"
 #include "usdt.h"
@@ -37,11 +36,55 @@
 
 #define DELAY_SMOOTHER_TIME_CONSTANT 0.5 // s
 
-static void screencopy__stop(struct screencopy* self)
+enum wlr_screencopy_status {
+	WLR_SCREENCOPY_STOPPED = 0,
+	WLR_SCREENCOPY_IN_PROGRESS,
+	WLR_SCREENCOPY_FAILED,
+	WLR_SCREENCOPY_FATAL,
+	WLR_SCREENCOPY_DONE,
+};
+
+struct wlr_screencopy {
+	struct screencopy parent;
+
+	enum wlr_screencopy_status status;
+
+	struct wv_buffer_pool* pool;
+	struct wv_buffer* front;
+	struct wv_buffer* back;
+
+	struct zwlr_screencopy_manager_v1* manager;
+	struct zwlr_screencopy_frame_v1* frame;
+
+	void* userdata;
+	void (*on_done)(enum screencopy_result, struct wv_buffer*,
+			struct wv_buffer*, void* userdata);
+
+	uint64_t last_time;
+	uint64_t start_time;
+	struct aml_timer* timer;
+
+	struct smooth delay_smoother;
+	double delay;
+	bool is_immediate_copy;
+	bool overlay_cursor;
+	struct wl_output* wl_output;
+
+	uint32_t wl_shm_width, wl_shm_height, wl_shm_stride;
+	enum wl_shm_format wl_shm_format;
+
+	bool have_linux_dmabuf;
+	uint32_t dmabuf_width, dmabuf_height;
+	uint32_t fourcc;
+};
+
+struct screencopy_impl wlr_screencopy_impl;
+
+static void screencopy__stop(struct wlr_screencopy* self)
 {
 	aml_stop(aml_get_default(), self->timer);
 
-	self->status = SCREENCOPY_STOPPED;
+	self->status = WLR_SCREENCOPY_STOPPED;
 
 	if (self->frame) {
 		zwlr_screencopy_frame_v1_destroy(self->frame);
@@ -49,8 +92,10 @@ static void screencopy__stop(struct screencopy* self)
 	}
 }
 
-void screencopy_stop(struct screencopy* self)
+void wlr_screencopy_stop(struct screencopy* ptr)
 {
+	struct wlr_screencopy* self = (struct wlr_screencopy*)ptr;
+
 	if (self->front)
 		wv_buffer_pool_release(self->pool, self->front);
 	self->front = NULL;
@@ -63,7 +108,7 @@ static void screencopy_linux_dmabuf(void* data,
 			      uint32_t format, uint32_t width, uint32_t height)
 {
 #ifdef ENABLE_SCREENCOPY_DMABUF
-	struct screencopy* self = data;
+	struct wlr_screencopy* self = data;
 
 	if (!(wv_buffer_get_available_types() & WV_BUFFER_DMABUF))
 		return;
@@ -78,12 +123,12 @@ static void screencopy_linux_dmabuf(void* data,
 static void screencopy_buffer_done(void* data,
 			      struct zwlr_screencopy_frame_v1* frame)
 {
-	struct screencopy* self = data;
+	struct wlr_screencopy* self = data;
 	uint32_t width, height, stride, fourcc;
 	enum wv_buffer_type type = WV_BUFFER_UNSPEC;
 
 #ifdef ENABLE_SCREENCOPY_DMABUF
-	if (self->have_linux_dmabuf && self->enable_linux_dmabuf) {
+	if (self->have_linux_dmabuf && self->parent.enable_linux_dmabuf) {
 		width = self->dmabuf_width;
 		height = self->dmabuf_height;
 		stride = 0;
@@ -104,8 +149,8 @@ static void screencopy_buffer_done(void* data,
 	struct wv_buffer* buffer = wv_buffer_pool_acquire(self->pool);
 	if (!buffer) {
 		screencopy__stop(self);
-		self->status = SCREENCOPY_FATAL;
-		self->on_done(self);
+		self->status = WLR_SCREENCOPY_FATAL;
+		self->on_done(SCREENCOPY_FATAL, NULL, NULL, self->userdata);
 		return;
 	}
 
@@ -124,7 +169,7 @@ static void screencopy_buffer(void* data,
 			      enum wl_shm_format format, uint32_t width,
 			      uint32_t height, uint32_t stride)
 {
-	struct screencopy* self = data;
+	struct wlr_screencopy* self = data;
 
 	self->wl_shm_format = format;
 	self->wl_shm_width = width;
@@ -145,7 +190,7 @@ static void screencopy_flags(void* data,
 {
 	(void)frame;
 
-	struct screencopy* self = data;
+	struct wlr_screencopy* self = data;
 
 	self->front->y_inverted =
 		!!(flags & ZWLR_SCREENCOPY_FRAME_V1_FLAGS_Y_INVERT);
@@ -155,7 +200,11 @@ static void screencopy_ready(void* data,
 			     struct zwlr_screencopy_frame_v1* frame,
 			     uint32_t sec_hi, uint32_t sec_lo, uint32_t nsec)
 {
-	struct screencopy* self = data;
+	(void)sec_hi;
+	(void)sec_lo;
+	(void)nsec;
+
+	struct wlr_screencopy* self = data;
 
 	uint64_t sec = (uint64_t)sec_hi << 32 | (uint64_t)sec_lo;
 	uint64_t pts = sec * UINT64_C(1000000) + (uint64_t)nsec / UINT64_C(1000);
@@ -179,14 +228,16 @@ static void screencopy_ready(void* data,
 
 	nvnc_fb_set_pts(self->back->nvnc_fb, pts);
 
-	self->status = SCREENCOPY_DONE;
-	self->on_done(self);
+	self->status = WLR_SCREENCOPY_DONE;
+	self->on_done(SCREENCOPY_DONE, self->back, NULL, self->userdata);
+
+	self->back = NULL;
 }
 
 static void screencopy_failed(void* data,
 			      struct zwlr_screencopy_frame_v1* frame)
 {
-	struct screencopy* self = data;
+	struct wlr_screencopy* self = data;
 
 	DTRACE_PROBE1(wayvnc, screencopy_failed, self);
 
@@ -196,8 +247,8 @@ static void screencopy_failed(void* data,
 		wv_buffer_pool_release(self->pool, self->front);
 	self->front = NULL;
 
-	self->status = SCREENCOPY_FAILED;
-	self->on_done(self);
+	self->status = WLR_SCREENCOPY_FAILED;
+	self->on_done(SCREENCOPY_FAILED, NULL, NULL, self->userdata);
 }
 
 static void screencopy_damage(void* data,
@@ -205,14 +256,14 @@ static void screencopy_damage(void* data,
 			      uint32_t x, uint32_t y,
 			      uint32_t width, uint32_t height)
 {
-	struct screencopy* self = data;
+	struct wlr_screencopy* self = data;
 
 	DTRACE_PROBE1(wayvnc, screencopy_damage, self);
 
 	wv_buffer_damage_rect(self->front, x, y, width, height);
 }
 
-static int screencopy__start_capture(struct screencopy* self)
+static int screencopy__start_capture(struct wlr_screencopy* self)
 {
 	DTRACE_PROBE1(wayvnc, screencopy_start, self);
 
@@ -241,23 +292,25 @@ static int screencopy__start_capture(struct screencopy* self)
 
 static void screencopy__poll(void* obj)
 {
-	struct screencopy* self = aml_get_userdata(obj);
+	struct wlr_screencopy* self = aml_get_userdata(obj);
 
 	screencopy__start_capture(self);
 }
 
-static int screencopy__start(struct screencopy* self, bool is_immediate_copy)
+static int wlr_screencopy_start(struct screencopy* ptr, bool is_immediate_copy)
 {
-	if (self->status == SCREENCOPY_IN_PROGRESS)
+	struct wlr_screencopy* self = (struct wlr_screencopy*)ptr;
+
+	if (self->status == WLR_SCREENCOPY_IN_PROGRESS)
 		return -1;
 
 	self->is_immediate_copy = is_immediate_copy;
 
 	uint64_t now = gettime_us();
 	double dt = (now - self->last_time) * 1.0e-6;
-	int32_t time_left = (1.0 / self->rate_limit - dt - self->delay) * 1.0e3;
+	int32_t time_left = (1.0 / ptr->rate_limit - dt - self->delay) * 1.0e3;
 
-	self->status = SCREENCOPY_IN_PROGRESS;
+	self->status = WLR_SCREENCOPY_IN_PROGRESS;
 
 	if (time_left > 0) {
 		aml_set_duration(self->timer, time_left);
@@ -267,18 +320,23 @@ static int screencopy__start(struct screencopy* self, bool is_immediate_copy)
 	return screencopy__start_capture(self);
 }
 
-int screencopy_start(struct screencopy* self)
+static struct screencopy* wlr_screencopy_create(void* manager,
+		struct wl_output* output, bool render_cursor,
+		screencopy_done_fn on_done, void* userdata)
 {
-	return screencopy__start(self, false);
-}
+	struct wlr_screencopy* self = calloc(1, sizeof(*self));
+	if (!self)
+		return NULL;
 
-int screencopy_start_immediate(struct screencopy* self)
-{
-	return screencopy__start(self, true);
-}
+	self->parent.impl = &wlr_screencopy_impl;
+	self->parent.rate_limit = 30;
 
-void screencopy_init(struct screencopy* self)
-{
+	self->manager = manager;
+	self->wl_output = output;
+	self->overlay_cursor = render_cursor;
+	self->on_done = on_done;
+	self->userdata = userdata;
+
 	self->pool = wv_buffer_pool_create(0, 0, 0, 0, 0);
 	assert(self->pool);
 
@@ -286,10 +344,13 @@ void screencopy_init(struct screencopy* self)
 	assert(self->timer);
 
 	self->delay_smoother.time_constant = DELAY_SMOOTHER_TIME_CONSTANT;
+
+	return (struct screencopy*)self;
 }
 
-void screencopy_destroy(struct screencopy* self)
+static void wlr_screencopy_destroy(struct screencopy* ptr)
 {
+	struct wlr_screencopy* self = (struct wlr_screencopy*)ptr;
 	aml_stop(aml_get_default(), self->timer);
 	aml_unref(self->timer);
 
@@ -300,3 +361,10 @@ void screencopy_destroy(struct screencopy* self)
 
 	wv_buffer_pool_destroy(self->pool);
 }
+
+struct screencopy_impl wlr_screencopy_impl = {
+	.create = wlr_screencopy_create,
+	.destroy = wlr_screencopy_destroy,
+	.start = wlr_screencopy_start,
+	.stop = wlr_screencopy_stop,
+};

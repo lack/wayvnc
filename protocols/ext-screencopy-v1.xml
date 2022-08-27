@@ -49,40 +49,41 @@
 
     <request name="capture_output">
       <description summary="capture an output">
-        Create a capturing surface for an output
+        Create a capturing session for an output
 
         If the "render_cursors" flag is set, cursors shall be composited onto
-        the main surface. Otherwise, the compositor should try to leave them
+        the captured frame. Otherwise, the compositor should try to leave them
         out, if possible.
       </description>
-      <arg name="surface" type="new_id" interface="ext_screencopy_surface_v1"/>
+      <arg name="session" type="new_id" interface="ext_screencopy_session_v1"/>
       <arg name="output" type="object" interface="wl_output"/>
       <arg name="options" type="uint" enum="options"/>
     </request>
   </interface>
 
-  <interface name="ext_screencopy_surface_v1" version="1">
-    <description summary="a frame ready for copy">
-      This object represents a surface that's being captured.
+  <interface name="ext_screencopy_session_v1" version="1">
+    <description summary="capturing session">
+      This is the frame capturing interface. It keeps track of changes between
+      frames.
 
-      After a screencopy surface is created, buffer_info events will be emitted
+      After a screencopy session is created, buffer_info events will be emitted
       from the compositor to tell the client which buffer types and formats are
-      supported for reading from the surface.
+      supported for reading from the session.
 
       When the client knows all the buffer attributes, it can create a buffer,
-      attach it to the screencopy surface using the "attach_buffer" request,
+      attach it to the screencopy session using the "attach_buffer" request,
       set the buffer damage using the "damage_buffer" request and then call
       the "commit" request.
 
       After "commit" has been called, the next time that a buffer is committed
       by the compositor, the contents of that buffer will be copied to the one
-      committed to the screencopy surface. A series of events will be generated,
+      committed to the screencopy session. A series of events will be generated,
       ending with the "ready" event, which means that the buffer is ready to be
-      used and a buffer may be committed to the surface again.
+      used and a buffer may be committed to the session again.
 
       The "failed" event may be sent at any time. When this happens, the client
-      must destroy the surface. Depending on the failure reason, the client can
-      create a new surface to replace it.
+      must destroy the session. Depending on the failure reason, the client can
+      create a new session to replace it.
     </description>
 
     <enum name="failure_reason">
@@ -112,7 +113,7 @@
       <description summary="buffer information">
         Provides information about buffer parameters that need to be used for
         the main image. This event is sent for every supported buffer type
-        after the surface is created.
+        after the session is created.
 
         The stride parameter is invalid for dmabuf and may be set to 0.
       </description>
@@ -127,7 +128,7 @@
       <description summary="cursor buffer information">
         Provides information about buffer parameters that need to be used for
         the cursor image. This event is sent for every supported buffer type
-        after the surface is created, and it may be different for each
+        after the session is created, and it may be different for each
         seat/input_type pair.
 
         The default seat will be referred to as "default" within this protocol,
@@ -145,14 +146,14 @@
     </event>
 
     <event name="init_done">
-      <description summary="surface initialisation done">
+      <description summary="session initialisation done">
         This event is sent once when all buffer info events have been sent.
       </description>
     </event>
 
     <request name="attach_buffer">
-      <description summary="attach buffer to surface">
-        Attach a buffer to the surface.
+      <description summary="attach buffer to session">
+        Attach a buffer to the session.
       </description>
       <arg name="buffer" type="object" interface="wl_buffer"/>
     </request>
@@ -176,16 +177,18 @@
     </request>
 
     <request name="attach_cursor_buffer">
-      <description summary="attach cursor buffer to surface">
-        Attach a cursor buffer to the surface. The cursor for the given seat and
+      <description summary="attach cursor buffer to session">
+        Attach a cursor buffer to the session. The cursor for the given seat and
         input type will be copied to the buffer.
 
         The cursor buffer may exceed the dimensions specified in the
         "cursor_buffer_info" event. The cursor image will be drawn in the top,
         left corner of the buffer.
+
+        If seat is NULL, the default seat is used.
       </description>
       <arg name="buffer" type="object" interface="wl_buffer"/>
-      <arg name="seat_name" type="string"/>
+      <arg name="seat" type="object" interface="wl_seat" allow-null="true"/>
       <arg name="input_type" type="uint" enum="input_type"/>
     </request>
 
@@ -194,17 +197,19 @@
         Apply damage to a named cursor buffer which is to be committed next.
 
         The whole cursor buffer will be considered damaged.
+
+        If seat is NULL, the default seat is used.
       </description>
-      <arg name="seat_name" type="string"/>
+      <arg name="seat" type="object" interface="wl_seat" allow-null="true"/>
       <arg name="input_type" type="uint" enum="input_type"/>
     </request>
 
     <request name="commit">
-      <description summary="commit surface">
-        Commit the screencopy surface.
+      <description summary="commit session">
+        Commit the screencopy session.
 
-        The frame will be copied to the surface on next output commit. A ready
-        event is generated when the buffer is ready.
+        The frame will be copied to the attached buffer on next output commit. A
+        ready event is generated when the buffer is ready.
 
         If the "on_damage" flag is set, the compositor should skip sending new
         frames to the client until there is damage.
@@ -214,7 +219,7 @@
 
     <request name="destroy" type="destructor">
       <description summary="delete this object">
-        Destroys the surface. This request can be sent at any time by the
+        Destroys the session. This request can be sent at any time by the
         client.
       </description>
     </request>
@@ -247,19 +252,19 @@
     </event>
 
     <event name="cursor_enter">
-      <description summary="cursor entered surface">
-        Sent when a cursor enters the captured surface. It shall be generated
+      <description summary="cursor entered captured are">
+        Sent when a cursor enters the captured area. It shall be generated
         before the "cursor_info" event when and only when a cursor enters the
-        surface.
+        area.
       </description>
       <arg name="seat_name" type="string" summary="seat name"/>
       <arg name="input_type" type="uint" enum="input_type" summary="input type"/>
     </event>
 
     <event name="cursor_leave">
-      <description summary="cursor left surface">
-        Sent when a cursor leaves the captured surface. No "cursor_info" event
-        is generated for for the given cursor.
+      <description summary="cursor left area">
+        Sent when a cursor leaves the captured area. No "cursor_info" event is
+        generated for for the given cursor.
       </description>
       <arg name="seat_name" type="string" summary="seat name"/>
       <arg name="input_type" type="uint" enum="input_type" summary="input type"/>
@@ -268,11 +273,12 @@
     <event name="cursor_info">
       <description summary="cursor specific information">
         This event is generated for each cursor buffer that was attached to the
-        surface and for which the cursor is currently focused on the surface.
-        It is generated once for each cursor buffer before the ready event.
+        session and for which the cursor is currently focused on the session
+        area. It is generated once for each cursor buffer before the ready
+        event.
 
-        Cursors outside the surface do not get captured and no event will be
-        generated for them.
+        Cursors outside the session area do not get captured and no event will
+        be generated for them.
 
         If the cursor image has changed, the cursor buffer will have been
         updated and the "has_damage" argument will be set to 1; otherwise 0.

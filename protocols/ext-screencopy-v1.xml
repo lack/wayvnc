@@ -52,8 +52,8 @@
         Create a capturing session for an output
 
         If the "render_cursors" flag is set, cursors shall be composited onto
-        the captured frame. Otherwise, the compositor should try to leave them
-        out, if possible.
+        the captured frame. The cursor should not be composited onto the frame
+        if this flag is not set.
       </description>
       <arg name="session" type="new_id" interface="ext_screencopy_session_v1"/>
       <arg name="output" type="object" interface="wl_output"/>
@@ -310,10 +310,10 @@
       <arg name="reason" type="uint" enum="failure_reason"/>
     </event>
 
-    <event name="commit_time">
-      <description summary="indicates the commit time of the frame">
-        This event indicates the time at which the frame is committed to be
-        scanned out in system monotonic time.
+    <event name="presentation_time">
+      <description summary="indicates the presentation time of the frame">
+        This event indicates the time at which the frame is presented to the
+        output in system monotonic time.
 
         The timestamp is expressed as tv_sec_hi, tv_sec_lo, tv_nsec triples,
         each component being an unsigned 32-bit value. Whole seconds are in

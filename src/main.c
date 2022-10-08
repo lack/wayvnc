@@ -438,6 +438,12 @@ void on_signal(void* obj)
 	wayvnc_exit(self);
 }
 
+void on_switch_next_keybind(struct keybind* keybind)
+{
+	struct wayvnc* self = keybind->userdata;
+	switch_to_next_output(self);
+}
+
 int init_main_loop(struct wayvnc* self)
 {
 	struct aml* loop = aml_get_default();
@@ -726,6 +732,8 @@ int wayvnc_usage(FILE* stream, int rc)
 "    -k,--keyboard=<layout>[-<variant>]        Select keyboard layout with an\n"
 "                                              optional variant.\n"
 "    -s,--seat=<name>                          Select seat by name.\n"
+"    -S,--switch-output=<keybind>              Enable switching to alternate\n"
+"                                              outputs by keystroke.\n"
 "    -r,--render-cursor                        Enable overlay cursor rendering.\n"
 "    -f,--max-fps=<fps>                        Set the rate limit (default 30).\n"
 "    -p,--show-performance                     Show performance counters.\n"
@@ -969,7 +977,9 @@ int main(int argc, char* argv[])
 	int max_rate = 30;
 	bool disable_input = false;
 
-	static const char* shortopts = "C:go:k:s:rf:hpudVvL:";
+	const char* switch_outputs_keybind;
+
+	static const char* shortopts = "C:go:k:s:S:rf:hpudVvL:";
 	int drm_fd MAYBE_UNUSED = -1;
 
 	int log_level = NVNC_LOG_WARNING;
@@ -980,6 +990,7 @@ int main(int argc, char* argv[])
 		{ "output", required_argument, NULL, 'o' },
 		{ "keyboard", required_argument, NULL, 'k' },
 		{ "seat", required_argument, NULL, 's' },
+		{ "switch-outputs", required_argument, NULL, 'S' },
 		{ "render-cursor", no_argument, NULL, 'r' },
 		{ "max-fps", required_argument, NULL, 'f' },
 		{ "help", no_argument, NULL, 'h' },
@@ -1012,6 +1023,9 @@ int main(int argc, char* argv[])
 			break;
 		case 's':
 			seat_name = optarg;
+			break;
+		case 'S':
+			switch_outputs_keybind = optarg;
 			break;
 		case 'r':
 			overlay_cursor = true;
@@ -1147,8 +1161,20 @@ int main(int argc, char* argv[])
 			nvnc_log(NVNC_LOG_ERROR, "Failed to initialise keyboard");
 			goto failure;
 		}
-	}
 
+		if (switch_outputs_keybind) {
+			nvnc_log(NVNC_LOG_DEBUG, "Binding %s to switch outputs",
+					switch_outputs_keybind);
+			if (keyboard_add_keybind(&self.keyboard_backend,
+						switch_outputs_keybind,
+						on_switch_next_keybind, &self) != 0) {
+				nvnc_log(NVNC_LOG_ERROR, "Could not bind switch-output keybind");
+				goto failure;
+			}
+			nvnc_log(NVNC_LOG_INFO, "Bound %s to switch outputs",
+					switch_outputs_keybind);
+		}
+	}
 
 	setup_pointer(&self);
 

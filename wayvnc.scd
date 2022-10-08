@@ -19,6 +19,10 @@ wayvnc - A VNC server for wlroots based Wayland compositors.
 *-o, --output=<name>*
 	Select output to capture.
 
+*-S, --switch-outputs=<key-binding>*
+	For displays with multiple outputs, binds a key to cycle through the
+	additional outputs.
+
 *-k, --keyboard=<layout>[-variant]*
 	Select keyboard layout. The variant can be appended if needed.
 
@@ -69,6 +73,9 @@ By default this will be the first one, but can be specified by the _-o_ command
 line argument. The argument accepts the short name such as _eDP-1_ or _DP-4_.
 Running wayvnc in verbose mode (_-v_) will display the names of all outputs on
 startup.
+
+You may also configure a key binding that switches outputs on the
+fly with the _-S_ option. See _KEY BINDINGS_ for detaila.
 
 # CONFIGURATION
 
@@ -147,6 +154,23 @@ password=p455w0rd
 private_key_file=/path/to/key.pem
 certificate_file=/path/to/cert.pem
 ```
+
+# KEYBINDINGS
+
+The syntax for keybindings is very similar to that in the sway configuration
+file:
+
+```
+[modname+[modname+...]]keyname
+```
+
+Where `modname` is one of:
+- ctrl, control
+- alt, mod1
+- logo, win, super, mod4
+
+And `keyname` is an XKB keysym name or a XKB keycode name. You can use `wev` or
+observe the debug output from `wayvnc -L debug` to learn valid keysym names.
 
 # ENVIRONMENT
 

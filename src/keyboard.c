@@ -162,6 +162,11 @@ int keyboard_init(struct keyboard* self, const struct xkb_rule_names* rule_names
 	if (intset_init(&self->key_state, 0) < 0)
 		goto key_state_failure;
 
+	if (intset_init(&self->active_keybinds, 0) < 0)
+		goto active_keybinds_failure;
+
+	wl_list_init(&self->keybinds);
+
 	self->keymap = xkb_keymap_new_from_names(self->context, rule_names, 0);
 	if (!self->keymap)
 		goto keymap_failure;
@@ -221,11 +226,15 @@ table_failure:
 state_failure:
 	xkb_keymap_unref(self->keymap);
 keymap_failure:
+	intset_destroy(&self->active_keybinds);
+active_keybinds_failure:
 	intset_destroy(&self->key_state);
 key_state_failure:
 	xkb_context_unref(self->context);
 	return -1;
 }
+
+void keybind_remove(struct keybind*);
 
 void keyboard_destroy(struct keyboard* self)
 {
@@ -233,6 +242,11 @@ void keyboard_destroy(struct keyboard* self)
 	xkb_state_unref(self->state);
 	xkb_keymap_unref(self->keymap);
 	intset_destroy(&self->key_state);
+	intset_destroy(&self->active_keybinds);
+	struct keybind* keybind;
+	struct keybind* temp;
+	wl_list_for_each_safe(keybind, temp, &self->keybinds, link)
+		keybind_remove(keybind);
 	xkb_context_unref(self->context);
 }
 
@@ -331,8 +345,42 @@ static bool keyboard_symbol_is_mod(xkb_keysym_t symbol)
 	return false;
 }
 
+bool keybind_consumed(struct keyboard* self, xkb_keycode_t code, bool is_pressed)
+{
+	if (!is_pressed) {
+		if (!intset_is_set(&self->active_keybinds, code))
+			return false;
+		nvnc_log(NVNC_LOG_DEBUG, "Intercepted reciprocal keyrelease for keybind of key 0x%x", code);
+		intset_clear(&self->active_keybinds, code);
+		return true;
+	}
+	bool handled = false;
+	struct keybind* keybind;
+	wl_list_for_each(keybind, &self->keybinds, link) {
+		if (keybind->code != code)
+			continue;
+		xkb_mod_mask_t mods = xkb_state_serialize_mods(self->state,
+				XKB_STATE_MODS_EFFECTIVE);
+		nvnc_log(NVNC_LOG_DEBUG, "Saw potential keybind for 0x%x. required mods: 0x%x current mods: 0x%x",
+				keybind->code, keybind->mods, mods);
+		if ((keybind->mods & mods) == keybind->mods) {
+			nvnc_log(NVNC_LOG_INFO, "Intercepted keypress for keybind %s (0x%x)",
+					keybind->name, code);
+			intset_set(&self->active_keybinds, code);
+			keybind->on_press(keybind);
+			handled = true;
+			break;
+		}
+	}
+	return handled;
+}
+
 static void send_key(struct keyboard* self, xkb_keycode_t code, bool is_pressed)
 {
+
+	if (keybind_consumed(self, code, is_pressed))
+		return;
+
 	zwp_virtual_keyboard_v1_key(self->virtual_keyboard, 0, code - 8,
 	                            is_pressed ? WL_KEYBOARD_KEY_STATE_PRESSED
 	                                       : WL_KEYBOARD_KEY_STATE_RELEASED);
@@ -435,4 +483,126 @@ void keyboard_feed_code(struct keyboard* self, xkb_keycode_t code,
 		keyboard_apply_mods(self, code, is_pressed);
 		send_key(self, code, is_pressed);
 	}
+}
+
+xkb_keycode_t parse_keycode(struct keyboard* self, const char* name)
+{
+	xkb_keysym_t code = xkb_keymap_key_by_name(self->keymap, name);
+	if (code != XKB_KEYCODE_INVALID) {
+		nvnc_log(NVNC_LOG_DEBUG, "Mapped %s to keycode 0x%x (%s)", name, code,
+		xkb_keymap_key_get_name(self->keymap, code));
+		return code;
+	}
+
+	xkb_keysym_t keysym = xkb_keysym_from_name(name, XKB_KEYSYM_CASE_INSENSITIVE);
+	if (keysym == XKB_KEY_NoSymbol) {
+		nvnc_log(NVNC_LOG_WARNING, "%s is not a recognised keycode or keysym", name);
+		return XKB_KEYCODE_INVALID;
+	}
+	struct table_entry* entry = keyboard_find_symbol(self, keysym);
+	if (entry == NULL) {
+		nvnc_log(NVNC_LOG_WARNING, "%s is a valid keysym, but could not be mapped to a keycode", name);
+		return XKB_KEYCODE_INVALID;
+	}
+	// TODO: what about levels??
+	char buffer[64];
+	nvnc_log(NVNC_LOG_DEBUG, "Mapped %s (aka %s) to keycode 0x%x (%s)", name,
+		get_symbol_name(keysym, buffer, sizeof(buffer)),
+		entry->code,
+		xkb_keymap_key_get_name(self->keymap, entry->code));
+	return entry->code;
+}
+
+struct mod_table_entry {
+	const char* modname;
+	const char* alternatives[5];
+};
+
+static struct mod_table_entry mod_table[] = {
+	{
+		.modname = XKB_MOD_NAME_CTRL,
+		.alternatives = { "control", "ctrl", NULL },
+	},
+	{
+		.modname = XKB_MOD_NAME_ALT,
+		.alternatives = { "alt", "mod1", NULL },
+	},
+	{
+		.modname = XKB_MOD_NAME_LOGO,
+		.alternatives = { "win", "logo", "super", "mod4", NULL },
+	},
+};
+
+xkb_mod_index_t parse_keymod(struct keyboard* self, const char* name)
+{
+	nvnc_log(NVNC_LOG_DEBUG, "Searching for modifier %s");
+	const char* modname = name;
+	for(int i = 0; i < sizeof(mod_table)/sizeof(mod_table[0]); ++i) {
+		for (const char** alt = mod_table[i].alternatives;
+				*alt != NULL; ++alt)
+		{
+			if (strcasecmp(name, *alt) == 0) {
+				modname = mod_table[i].modname;
+				nvnc_log(NVNC_LOG_DEBUG, "Mapped %s to modifier %s", name, modname);
+				goto done_mod_search;
+			}
+		}
+	}
+done_mod_search:
+	return xkb_keymap_mod_get_index(self->keymap, modname);
+}
+
+int keyboard_add_keybind(struct keyboard* self, const char* key_name,
+    void (*on_press)(struct keybind*), void* userdata)
+{
+	struct keybind* keybind = calloc(1, sizeof(*keybind));
+	if (!keybind) {
+		nvnc_log(NVNC_LOG_ERROR, "OOM");
+		return -1;
+	}
+	strncpy(keybind->name, key_name, sizeof(keybind->name));
+	keybind->on_press = on_press;
+	keybind->userdata = userdata;
+
+	char* part;
+	char* i = keybind->name;;
+	while((part = strsep(&i, "+"))) {
+		if (i == NULL) {
+			// Last word; must be the key
+			keybind->code = parse_keycode(self, part);
+			if (keybind->code == XKB_KEYCODE_INVALID) {
+				nvnc_log(NVNC_LOG_ERROR, "Keybinding for %s failed: %s is not a valid key",
+						key_name, part);
+				goto parse_failure;
+			}
+		} else {
+			// Must be a modifier
+			xkb_mod_index_t mod = parse_keymod(self, part);
+			if (mod == XKB_MOD_INVALID) {
+				nvnc_log(NVNC_LOG_ERROR, "Keybinding for %s failed: %s is not a valid modifier",
+						key_name, part);
+				goto parse_failure;
+			}
+			keybind->mods |= (1 << mod);
+		}
+	}
+	// Recopy the original name now that strsep is done
+	strncpy(keybind->name, key_name, 128);
+
+	nvnc_log(NVNC_LOG_DEBUG, "Adding keybind for %s: 0x%x 0x%x",
+			keybind->name, keybind->code, keybind->mods);
+
+	wl_list_insert(&self->keybinds, &keybind->link);
+
+	return 0;
+
+parse_failure:
+	free(keybind);
+	return -1;
+}
+
+void keybind_remove(struct keybind* self)
+{
+	wl_list_remove(&self->link);
+	free(self);
 }

@@ -26,7 +26,7 @@ double smooth(struct smooth* self, double input)
 	self->last_time = now;
 
 	double factor = 1.0 - exp(-dt / self->time_constant);
-	
+
 	double result = factor * input + (1.0 - factor) * self->last_result;
 	self->last_result = result;
 

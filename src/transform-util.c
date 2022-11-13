@@ -44,89 +44,82 @@
  * wl_output_transform.
  */
 void wv_pixman_transform_from_wl_output_transform(pixman_transform_t* dst,
-		enum wl_output_transform src, int width, int height)
+						  enum wl_output_transform src,
+						  int width, int height)
 {
 #define F1 pixman_fixed_1
 	switch (src) {
-	case WL_OUTPUT_TRANSFORM_NORMAL:
-		{
-			pixman_transform_t t = {{
-				{ F1, 0, 0 },
-				{ 0, F1, 0 },
-				{ 0, 0, F1 },
-			}};
-			*dst = t;
-		}
+	case WL_OUTPUT_TRANSFORM_NORMAL: {
+		pixman_transform_t t = { {
+			{ F1, 0, 0 },
+			{ 0, F1, 0 },
+			{ 0, 0, F1 },
+		} };
+		*dst = t;
+	}
 		return;
-	case WL_OUTPUT_TRANSFORM_90:
-		{
-			pixman_transform_t t = {{
-				{ 0, F1, 0 },
-				{ -F1, 0, height * F1 },
-				{ 0, 0, F1 },
-			}};
-			*dst = t;
-		}
+	case WL_OUTPUT_TRANSFORM_90: {
+		pixman_transform_t t = { {
+			{ 0, F1, 0 },
+			{ -F1, 0, height * F1 },
+			{ 0, 0, F1 },
+		} };
+		*dst = t;
+	}
 		return;
-	case WL_OUTPUT_TRANSFORM_180:
-		{
-			pixman_transform_t t = {{
-				{ -F1, 0, width * F1 },
-				{ 0, -F1, height * F1 },
-				{ 0, 0, F1 },
-			}};
-			*dst = t;
-		}
+	case WL_OUTPUT_TRANSFORM_180: {
+		pixman_transform_t t = { {
+			{ -F1, 0, width * F1 },
+			{ 0, -F1, height * F1 },
+			{ 0, 0, F1 },
+		} };
+		*dst = t;
+	}
 		return;
-	case WL_OUTPUT_TRANSFORM_270:
-		{
-			pixman_transform_t t = {{
-				{ 0, -F1, width * F1 },
-				{ F1, 0, 0 },
-				{ 0, 0, F1 },
-			}};
-			*dst = t;
-		}
+	case WL_OUTPUT_TRANSFORM_270: {
+		pixman_transform_t t = { {
+			{ 0, -F1, width * F1 },
+			{ F1, 0, 0 },
+			{ 0, 0, F1 },
+		} };
+		*dst = t;
+	}
 		return;
-	case WL_OUTPUT_TRANSFORM_FLIPPED:
-		{
-			pixman_transform_t t = {{
-				{ -F1, 0, width * F1 },
-				{ 0, F1, 0 },
-				{ 0, 0, F1 },
-			}};
-			*dst = t;
-		}
+	case WL_OUTPUT_TRANSFORM_FLIPPED: {
+		pixman_transform_t t = { {
+			{ -F1, 0, width * F1 },
+			{ 0, F1, 0 },
+			{ 0, 0, F1 },
+		} };
+		*dst = t;
+	}
 		return;
-	case WL_OUTPUT_TRANSFORM_FLIPPED_90:
-		{
-			pixman_transform_t t = {{
-				{ 0, F1, 0 },
-				{ F1, 0, 0 },
-				{ 0, 0, F1 },
-			}};
-			*dst = t;
-		}
+	case WL_OUTPUT_TRANSFORM_FLIPPED_90: {
+		pixman_transform_t t = { {
+			{ 0, F1, 0 },
+			{ F1, 0, 0 },
+			{ 0, 0, F1 },
+		} };
+		*dst = t;
+	}
 		return;
-	case WL_OUTPUT_TRANSFORM_FLIPPED_180:
-		{
-			pixman_transform_t t = {{
-				{ F1, 0, 0 },
-				{ 0, -F1, height * F1 },
-				{ 0, 0, F1 },
-			}};
-			*dst = t;
-		}
+	case WL_OUTPUT_TRANSFORM_FLIPPED_180: {
+		pixman_transform_t t = { {
+			{ F1, 0, 0 },
+			{ 0, -F1, height * F1 },
+			{ 0, 0, F1 },
+		} };
+		*dst = t;
+	}
 		return;
-	case WL_OUTPUT_TRANSFORM_FLIPPED_270:
-		{
-			pixman_transform_t t = {{
-				{ 0, -F1, width * F1 },
-				{ -F1, 0, height * F1 },
-				{ 0, 0, F1 },
-			}};
-			*dst = t;
-		}
+	case WL_OUTPUT_TRANSFORM_FLIPPED_270: {
+		pixman_transform_t t = { {
+			{ 0, -F1, width * F1 },
+			{ -F1, 0, height * F1 },
+			{ 0, 0, F1 },
+		} };
+		*dst = t;
+	}
 		return;
 	}
 #undef F1
@@ -136,8 +129,9 @@ void wv_pixman_transform_from_wl_output_transform(pixman_transform_t* dst,
 
 /* Borrowed these from wlroots */
 void wv_region_transform(struct pixman_region16* dst,
-		struct pixman_region16* src, enum wl_output_transform transform,
-		int width, int height)
+			 struct pixman_region16* src,
+			 enum wl_output_transform transform, int width,
+			 int height)
 {
 	if (transform == WL_OUTPUT_TRANSFORM_NORMAL) {
 		pixman_region_copy(dst, src);
@@ -212,17 +206,19 @@ void wv_region_transform(struct pixman_region16* dst,
 
 enum wl_output_transform wv_output_transform_invert(enum wl_output_transform tr)
 {
-	if ((tr & WL_OUTPUT_TRANSFORM_90) && !(tr & WL_OUTPUT_TRANSFORM_FLIPPED)) {
+	if ((tr & WL_OUTPUT_TRANSFORM_90)
+	    && !(tr & WL_OUTPUT_TRANSFORM_FLIPPED)) {
 		tr ^= WL_OUTPUT_TRANSFORM_180;
 	}
 	return tr;
 }
 
 enum wl_output_transform wv_output_transform_compose(
-		enum wl_output_transform tr_a, enum wl_output_transform tr_b)
+	enum wl_output_transform tr_a, enum wl_output_transform tr_b)
 {
 	uint32_t flipped = (tr_a ^ tr_b) & WL_OUTPUT_TRANSFORM_FLIPPED;
-	uint32_t rotation_mask = WL_OUTPUT_TRANSFORM_90 | WL_OUTPUT_TRANSFORM_180;
+	uint32_t rotation_mask = WL_OUTPUT_TRANSFORM_90
+				 | WL_OUTPUT_TRANSFORM_180;
 	uint32_t rotated;
 	if (tr_b & WL_OUTPUT_TRANSFORM_FLIPPED) {
 		// When a rotation of k degrees is followed by a flip, the

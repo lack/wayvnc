@@ -120,8 +120,8 @@ struct zwp_linux_dmabuf_v1* zwp_linux_dmabuf = NULL;
 struct gbm_device* gbm_device = NULL;
 
 static bool registry_add_input(void* data, struct wl_registry* registry,
-			 uint32_t id, const char* interface,
-			 uint32_t version)
+			       uint32_t id, const char* interface,
+			       uint32_t version)
 {
 	struct wayvnc* self = data;
 
@@ -144,32 +144,36 @@ static bool registry_add_input(void* data, struct wl_registry* registry,
 		return true;
 	}
 
-	if (strcmp(interface, zwlr_virtual_pointer_manager_v1_interface.name) == 0) {
-		self->pointer_manager = wl_registry_bind(registry, id,
-				&zwlr_virtual_pointer_manager_v1_interface,
-				MIN(2, version));
+	if (strcmp(interface, zwlr_virtual_pointer_manager_v1_interface.name)
+	    == 0) {
+		self->pointer_manager = wl_registry_bind(
+			registry, id,
+			&zwlr_virtual_pointer_manager_v1_interface,
+			MIN(2, version));
 		return true;
 	}
 
-	if (strcmp(interface, zwp_virtual_keyboard_manager_v1_interface.name) == 0) {
-		self->keyboard_manager = wl_registry_bind(registry, id,
-				&zwp_virtual_keyboard_manager_v1_interface,
-				1);
+	if (strcmp(interface, zwp_virtual_keyboard_manager_v1_interface.name)
+	    == 0) {
+		self->keyboard_manager = wl_registry_bind(
+			registry, id,
+			&zwp_virtual_keyboard_manager_v1_interface, 1);
 		return true;
 	}
 
-	if (strcmp(interface, zwlr_data_control_manager_v1_interface.name) == 0) {
-		self->data_control.manager = wl_registry_bind(registry, id,
-				&zwlr_data_control_manager_v1_interface, 2);
+	if (strcmp(interface, zwlr_data_control_manager_v1_interface.name)
+	    == 0) {
+		self->data_control.manager = wl_registry_bind(
+			registry, id, &zwlr_data_control_manager_v1_interface,
+			2);
 		return true;
 	}
 
 	return false;
 }
 
-static void registry_add(void* data, struct wl_registry* registry,
-			 uint32_t id, const char* interface,
-			 uint32_t version)
+static void registry_add(void* data, struct wl_registry* registry, uint32_t id,
+			 const char* interface, uint32_t version)
 {
 	struct wayvnc* self = data;
 
@@ -190,7 +194,7 @@ static void registry_add(void* data, struct wl_registry* registry,
 	if (strcmp(interface, zxdg_output_manager_v1_interface.name) == 0) {
 		self->xdg_output_manager =
 			wl_registry_bind(registry, id,
-			                 &zxdg_output_manager_v1_interface, 3);
+					 &zxdg_output_manager_v1_interface, 3);
 		return;
 	}
 
@@ -208,8 +212,9 @@ static void registry_add(void* data, struct wl_registry* registry,
 	}
 
 	if (strcmp(interface, zwp_linux_dmabuf_v1_interface.name) == 0) {
-		zwp_linux_dmabuf = wl_registry_bind(registry, id,
-				&zwp_linux_dmabuf_v1_interface, 3);
+		zwp_linux_dmabuf =
+			wl_registry_bind(registry, id,
+					 &zwp_linux_dmabuf_v1_interface, 3);
 		return;
 	}
 
@@ -225,17 +230,19 @@ static void registry_remove(void* data, struct wl_registry* registry,
 	struct output* out = output_find_by_id(&self->outputs, id);
 	if (out) {
 		if (out == self->selected_output) {
-			nvnc_log(NVNC_LOG_WARNING, "Selected output %s went away",
-					out->name);
+			nvnc_log(NVNC_LOG_WARNING,
+				 "Selected output %s went away", out->name);
 			switch_to_prev_output(self);
 		} else
-			nvnc_log(NVNC_LOG_INFO, "Output %s went away", out->name);
+			nvnc_log(NVNC_LOG_INFO, "Output %s went away",
+				 out->name);
 
 		wl_list_remove(&out->link);
 		output_destroy(out);
 
 		if (out == self->selected_output) {
-			nvnc_log(NVNC_LOG_ERROR, "No fallback outputs left. Exiting...");
+			nvnc_log(NVNC_LOG_ERROR,
+				 "No fallback outputs left. Exiting...");
 			wayvnc_exit(self);
 		}
 
@@ -249,7 +256,8 @@ static void registry_remove(void* data, struct wl_registry* registry,
 		seat_destroy(seat);
 
 		if (seat == self->selected_seat) {
-			nvnc_log(NVNC_LOG_ERROR, "Selected seat went away. Exiting...");
+			nvnc_log(NVNC_LOG_ERROR,
+				 "Selected seat went away. Exiting...");
 			wayvnc_exit(self);
 		}
 
@@ -258,13 +266,15 @@ static void registry_remove(void* data, struct wl_registry* registry,
 }
 
 #ifdef ENABLE_SCREENCOPY_DMABUF
-static int find_render_node(char *node, size_t maxlen) {
+static int find_render_node(char* node, size_t maxlen)
+{
 	bool r = -1;
-	drmDevice *devices[64];
+	drmDevice* devices[64];
 
-	int n = drmGetDevices2(0, devices, sizeof(devices) / sizeof(devices[0]));
+	int n = drmGetDevices2(0, devices,
+			       sizeof(devices) / sizeof(devices[0]));
 	for (int i = 0; i < n; ++i) {
-		drmDevice *dev = devices[i];
+		drmDevice* dev = devices[i];
 		if (!(dev->available_nodes & (1 << DRM_NODE_RENDER)))
 			continue;
 
@@ -310,7 +320,7 @@ void wayvnc_destroy(struct wayvnc* self)
 
 	if (self->keyboard_backend.virtual_keyboard) {
 		zwp_virtual_keyboard_v1_destroy(
-				self->keyboard_backend.virtual_keyboard);
+			self->keyboard_backend.virtual_keyboard);
 		keyboard_destroy(&self->keyboard_backend);
 	}
 
@@ -339,7 +349,7 @@ void wayvnc_destroy(struct wayvnc* self)
 static void init_xdg_outputs(struct wayvnc* self)
 {
 	struct output* output;
-	wl_list_for_each(output, &self->outputs, link) {
+	wl_list_for_each (output, &self->outputs, link) {
 		struct zxdg_output_v1* xdg_output =
 			zxdg_output_manager_v1_get_xdg_output(
 				self->xdg_output_manager, output->wl_output);
@@ -374,14 +384,22 @@ static int init_wayland(struct wayvnc* self)
 	init_xdg_outputs(self);
 
 	if (!self->pointer_manager && !self->disable_input) {
-		nvnc_log(NVNC_LOG_ERROR, "Virtual Pointer protocol not supported by compositor.");
-		nvnc_log(NVNC_LOG_ERROR, "wayvnc may still work if started with --disable-input.");
+		nvnc_log(
+			NVNC_LOG_ERROR,
+			"Virtual Pointer protocol not supported by compositor.");
+		nvnc_log(
+			NVNC_LOG_ERROR,
+			"wayvnc may still work if started with --disable-input.");
 		goto failure;
 	}
 
 	if (!self->keyboard_manager && !self->disable_input) {
-		nvnc_log(NVNC_LOG_ERROR, "Virtual Keyboard protocol not supported by compositor.");
-		nvnc_log(NVNC_LOG_ERROR, "wayvnc may still work if started with --disable-input.");
+		nvnc_log(
+			NVNC_LOG_ERROR,
+			"Virtual Keyboard protocol not supported by compositor.");
+		nvnc_log(
+			NVNC_LOG_ERROR,
+			"wayvnc may still work if started with --disable-input.");
 		goto failure;
 	}
 
@@ -389,7 +407,9 @@ static int init_wayland(struct wayvnc* self)
 	wl_display_roundtrip(self->display);
 
 	if (!self->screencopy.manager) {
-		nvnc_log(NVNC_LOG_ERROR, "Screencopy protocol not supported by compositor. Exiting. Refer to FAQ section in man page.");
+		nvnc_log(
+			NVNC_LOG_ERROR,
+			"Screencopy protocol not supported by compositor. Exiting. Refer to FAQ section in man page.");
 		goto failure;
 	}
 
@@ -412,10 +432,12 @@ void on_wayland_event(void* obj)
 
 	if (wl_display_read_events(self->display) < 0) {
 		if (errno == EPIPE || errno == ECONNRESET) {
-			nvnc_log(NVNC_LOG_ERROR, "Compositor has gone away. Exiting...");
+			nvnc_log(NVNC_LOG_ERROR,
+				 "Compositor has gone away. Exiting...");
 			wayvnc_exit(self);
 		} else {
-			nvnc_log(NVNC_LOG_ERROR, "Failed to read wayland events: %m");
+			nvnc_log(NVNC_LOG_ERROR,
+				 "Failed to read wayland events: %m");
 		}
 	}
 
@@ -435,25 +457,27 @@ void on_signal(void* obj)
 	wayvnc_exit(self);
 }
 
-struct cmd_response* on_output_cycle(struct ctl* ctl, enum output_cycle_direction direction)
+struct cmd_response* on_output_cycle(struct ctl* ctl,
+				     enum output_cycle_direction direction)
 {
 	struct wayvnc* self = ctl_server_userdata(ctl);
 	nvnc_log(NVNC_LOG_INFO, "ctl command: Rotating to %s output",
-			direction == OUTPUT_CYCLE_FORWARD ? "next" : "previous");
-	struct output* next = output_cycle(&self->outputs,
-			self->selected_output, direction);
+		 direction == OUTPUT_CYCLE_FORWARD ? "next" : "previous");
+	struct output* next =
+		output_cycle(&self->outputs, self->selected_output, direction);
 	switch_to_output(self, next);
 	return cmd_ok();
 }
 
-struct cmd_response* on_output_switch(struct ctl* ctl,
-			const char* output_name)
+struct cmd_response* on_output_switch(struct ctl* ctl, const char* output_name)
 {
-	nvnc_log(NVNC_LOG_INFO, "ctl command: Switch to output \"%s\"", output_name);
+	nvnc_log(NVNC_LOG_INFO, "ctl command: Switch to output \"%s\"",
+		 output_name);
 	struct wayvnc* self = ctl_server_userdata(ctl);
 	if (!output_name || output_name[0] == '\0')
 		return cmd_failed("Output name is required");
-	struct output* output = output_find_by_name(&self->outputs, output_name);
+	struct output* output =
+		output_find_by_name(&self->outputs, output_name);
 	if (!output) {
 		return cmd_failed("No such output \"%s\"", output_name);
 	}
@@ -467,7 +491,7 @@ int init_main_loop(struct wayvnc* self)
 
 	struct aml_handler* wl_handler;
 	wl_handler = aml_handler_new(wl_display_get_fd(self->display),
-	                             on_wayland_event, self, NULL);
+				     on_wayland_event, self, NULL);
 	if (!wl_handler)
 		return -1;
 
@@ -504,7 +528,7 @@ static void on_pointer_event(struct nvnc_client* client, uint16_t x, uint16_t y,
 }
 
 static void on_key_event(struct nvnc_client* client, uint32_t symbol,
-                         bool is_pressed)
+			 bool is_pressed)
 {
 	struct nvnc* nvnc = nvnc_client_get_server(client);
 	struct wayvnc* wayvnc = nvnc_get_userdata(nvnc);
@@ -513,7 +537,7 @@ static void on_key_event(struct nvnc_client* client, uint32_t symbol,
 }
 
 static void on_key_code_event(struct nvnc_client* client, uint32_t code,
-		bool is_pressed)
+			      bool is_pressed)
 {
 	struct nvnc* nvnc = nvnc_client_get_server(client);
 	struct wayvnc* wayvnc = nvnc_get_userdata(nvnc);
@@ -521,7 +545,8 @@ static void on_key_code_event(struct nvnc_client* client, uint32_t code,
 	keyboard_feed_code(&wayvnc->keyboard_backend, code + 8, is_pressed);
 }
 
-static void on_client_cut_text(struct nvnc* server, const char* text, uint32_t len)
+static void on_client_cut_text(struct nvnc* server, const char* text,
+			       uint32_t len)
 {
 	struct wayvnc* wayvnc = nvnc_get_userdata(server);
 
@@ -547,11 +572,12 @@ bool on_auth(const char* username, const char* password, void* ud)
 	return true;
 }
 
-static struct nvnc_fb* create_placeholder_buffer(uint16_t width, uint16_t height)
+static struct nvnc_fb* create_placeholder_buffer(uint16_t width,
+						 uint16_t height)
 {
 	uint16_t stride = width;
-	struct nvnc_fb* fb = nvnc_fb_new(width, height, DRM_FORMAT_XRGB8888,
-			stride);
+	struct nvnc_fb* fb =
+		nvnc_fb_new(width, height, DRM_FORMAT_XRGB8888, stride);
 	if (!fb)
 		return NULL;
 
@@ -561,17 +587,22 @@ static struct nvnc_fb* create_placeholder_buffer(uint16_t width, uint16_t height
 	return fb;
 }
 
-int init_nvnc(struct wayvnc* self, const char* addr, uint16_t port, bool is_unix)
+int init_nvnc(struct wayvnc* self, const char* addr, uint16_t port,
+	      bool is_unix)
 {
 	self->nvnc = is_unix ? nvnc_open_unix(addr) : nvnc_open(addr, port);
 	if (!self->nvnc) {
-		nvnc_log(NVNC_LOG_ERROR, "Failed to bind to address. Add -Ldebug to the argument list for more info.");
+		nvnc_log(
+			NVNC_LOG_ERROR,
+			"Failed to bind to address. Add -Ldebug to the argument list for more info.");
 		return -1;
 	}
 	if (is_unix)
-		nvnc_log(NVNC_LOG_INFO, "Listening for connections on %s", addr);
+		nvnc_log(NVNC_LOG_INFO, "Listening for connections on %s",
+			 addr);
 	else
-		nvnc_log(NVNC_LOG_INFO, "Listening for connections on %s:%d", addr, port);
+		nvnc_log(NVNC_LOG_INFO, "Listening for connections on %s:%d",
+			 addr, port);
 
 	self->nvnc_display = nvnc_display_new(0, 0);
 	if (!self->nvnc_display)
@@ -583,9 +614,10 @@ int init_nvnc(struct wayvnc* self, const char* addr, uint16_t port, bool is_unix
 
 	nvnc_set_name(self->nvnc, "WayVNC");
 
-	if (self->cfg.enable_auth &&
-	    nvnc_enable_auth(self->nvnc, self->cfg.private_key_file,
-	                     self->cfg.certificate_file, on_auth, self) < 0) {
+	if (self->cfg.enable_auth
+	    && nvnc_enable_auth(self->nvnc, self->cfg.private_key_file,
+				self->cfg.certificate_file, on_auth, self)
+		       < 0) {
 		nvnc_log(NVNC_LOG_ERROR, "Failed to enable authentication");
 		goto failure;
 	}
@@ -604,16 +636,17 @@ int init_nvnc(struct wayvnc* self, const char* addr, uint16_t port, bool is_unix
 
 	struct nvnc_fb* placeholder_fb =
 		create_placeholder_buffer(self->selected_output->width,
-				self->selected_output->height);
+					  self->selected_output->height);
 	if (!placeholder_fb) {
-		nvnc_log(NVNC_LOG_ERROR, "Failed to allocate a placeholder buffer");
+		nvnc_log(NVNC_LOG_ERROR,
+			 "Failed to allocate a placeholder buffer");
 		goto failure;
 	}
 
 	struct pixman_region16 damage;
 	pixman_region_init_rect(&damage, 0, 0,
-			nvnc_fb_get_width(placeholder_fb),
-			nvnc_fb_get_height(placeholder_fb));
+				nvnc_fb_get_width(placeholder_fb),
+				nvnc_fb_get_height(placeholder_fb));
 
 	nvnc_display_feed_buffer(self->nvnc_display, placeholder_fb, &damage);
 	pixman_region_fini(&damage);
@@ -655,7 +688,8 @@ void on_output_dimension_change(struct output* output)
 	if (self->nr_clients == 0)
 		return;
 
-	nvnc_log(NVNC_LOG_DEBUG, "Output dimensions changed. Restarting frame capturer...");
+	nvnc_log(NVNC_LOG_DEBUG,
+		 "Output dimensions changed. Restarting frame capturer...");
 
 	screencopy_stop(&self->screencopy);
 	wayvnc_start_capture_immediate(self);
@@ -666,8 +700,7 @@ static uint32_t calculate_region_area(struct pixman_region16* region)
 	uint32_t area = 0;
 
 	int n_rects = 0;
-	struct pixman_box16* rects = pixman_region_rectangles(region,
-		&n_rects);
+	struct pixman_box16* rects = pixman_region_rectangles(region, &n_rects);
 
 	for (int i = 0; i < n_rects; ++i) {
 		int width = rects[i].x2 - rects[i].x1;
@@ -684,8 +717,7 @@ void wayvnc_process_frame(struct wayvnc* self)
 	self->screencopy.back = NULL;
 
 	self->n_frames_captured++;
-	self->damage_area_sum +=
-		calculate_region_area(&buffer->damage);
+	self->damage_area_sum += calculate_region_area(&buffer->damage);
 
 	struct pixman_region16 damage;
 	pixman_region_init(&damage);
@@ -694,22 +726,21 @@ void wayvnc_process_frame(struct wayvnc* self)
 	output_transform = self->selected_output->transform;
 
 	if (buffer->y_inverted) {
-		buffer_transform = wv_output_transform_compose(output_transform,
-				WL_OUTPUT_TRANSFORM_FLIPPED_180);
+		buffer_transform = wv_output_transform_compose(
+			output_transform, WL_OUTPUT_TRANSFORM_FLIPPED_180);
 
 		wv_region_transform(&damage, &buffer->damage,
-				WL_OUTPUT_TRANSFORM_FLIPPED_180,
-				buffer->width, buffer->height);
+				    WL_OUTPUT_TRANSFORM_FLIPPED_180,
+				    buffer->width, buffer->height);
 	} else {
 		buffer_transform = output_transform;
 		pixman_region_copy(&damage, &buffer->damage);
 	}
 
 	nvnc_fb_set_transform(buffer->nvnc_fb,
-			(enum nvnc_transform)buffer_transform);
+			      (enum nvnc_transform)buffer_transform);
 
-	nvnc_display_feed_buffer(self->nvnc_display, buffer->nvnc_fb,
-			&damage);
+	nvnc_display_feed_buffer(self->nvnc_display, buffer->nvnc_fb, &damage);
 
 	pixman_region_fini(&damage);
 
@@ -726,7 +757,8 @@ void on_capture_done(struct screencopy* sc)
 	case SCREENCOPY_IN_PROGRESS:
 		break;
 	case SCREENCOPY_FATAL:
-		nvnc_log(NVNC_LOG_ERROR, "Fatal error while capturing. Exiting...");
+		nvnc_log(NVNC_LOG_ERROR,
+			 "Fatal error while capturing. Exiting...");
 		wayvnc_exit(self);
 		break;
 	case SCREENCOPY_FAILED:
@@ -741,6 +773,7 @@ void on_capture_done(struct screencopy* sc)
 int wayvnc_usage(FILE* stream, int rc)
 {
 	static const char* usage =
+		// clang-format off
 "Usage: wayvnc [options] [address [port]]\n"
 "\n"
 "    -C,--config=<path>                        Select a config file.\n"
@@ -765,6 +798,7 @@ int wayvnc_usage(FILE* stream, int rc)
 "                                              trace and quiet.\n"
 "    -h,--help                                 Get help (this text).\n"
 "\n";
+	// clang-format on
 
 	fprintf(stream, "%s", usage);
 
@@ -777,26 +811,34 @@ int check_cfg_sanity(struct cfg* cfg)
 		int rc = 0;
 
 		if (!nvnc_has_auth()) {
-			nvnc_log(NVNC_LOG_ERROR, "Authentication can't be enabled because it was not selected during build");
+			nvnc_log(
+				NVNC_LOG_ERROR,
+				"Authentication can't be enabled because it was not selected during build");
 			return -1;
 		}
 
 		if (!cfg->certificate_file) {
-			nvnc_log(NVNC_LOG_ERROR, "Authentication enabled, but missing certificate_file");
+			nvnc_log(
+				NVNC_LOG_ERROR,
+				"Authentication enabled, but missing certificate_file");
 			rc = -1;
 		}
 
 		if (!cfg->private_key_file) {
-			nvnc_log(NVNC_LOG_ERROR, "Authentication enabled, but missing private_key_file");
+			nvnc_log(
+				NVNC_LOG_ERROR,
+				"Authentication enabled, but missing private_key_file");
 			rc = -1;
 		}
 		if (!cfg->username && !cfg->enable_pam) {
-			nvnc_log(NVNC_LOG_ERROR, "Authentication enabled, but missing username");
+			nvnc_log(NVNC_LOG_ERROR,
+				 "Authentication enabled, but missing username");
 			rc = -1;
 		}
 
 		if (!cfg->password && !cfg->enable_pam) {
-			nvnc_log(NVNC_LOG_ERROR, "Authentication enabled, but missing password");
+			nvnc_log(NVNC_LOG_ERROR,
+				 "Authentication enabled, but missing password");
 			rc = -1;
 		}
 		return rc;
@@ -809,12 +851,16 @@ static void on_perf_tick(void* obj)
 {
 	struct wayvnc* self = aml_get_userdata(obj);
 
-	double total_area = self->selected_output->width * self->selected_output->height;
-	double area_avg = (double)self->damage_area_sum / (double)self->n_frames_captured;
+	double total_area =
+		self->selected_output->width * self->selected_output->height;
+	double area_avg =
+		(double)self->damage_area_sum / (double)self->n_frames_captured;
 	double relative_area_avg = 100.0 * area_avg / total_area;
 
-	nvnc_log(NVNC_LOG_INFO, "Frames captured: %"PRIu32", average reported frame damage: %.1f %%",
-			self->n_frames_captured, relative_area_avg);
+	nvnc_log(NVNC_LOG_INFO,
+		 "Frames captured: %" PRIu32
+		 ", average reported frame damage: %.1f %%",
+		 self->n_frames_captured, relative_area_avg);
 
 	self->n_frames_captured = 0;
 	self->damage_area_sum = 0;
@@ -843,14 +889,14 @@ static void on_client_cleanup(struct nvnc_client* client)
 
 	self->nr_clients--;
 	nvnc_log(NVNC_LOG_DEBUG, "Client disconnected, new client count: %d",
-			self->nr_clients);
+		 self->nr_clients);
 
 	char id[11];
 	snprintf(id, 11, "%p", nvnc);
 	ctl_server_event_disconnected(self->ctl, id,
-			nvnc_client_get_hostname(client),
-			nvnc_client_get_auth_username(client),
-			self->nr_clients);
+				      nvnc_client_get_hostname(client),
+				      nvnc_client_get_auth_username(client),
+				      self->nr_clients);
 
 	if (self->nr_clients == 0) {
 		nvnc_log(NVNC_LOG_INFO, "Stopping screen capture");
@@ -872,14 +918,14 @@ static void on_client_new(struct nvnc_client* client)
 	self->nr_clients++;
 	nvnc_set_client_cleanup_fn(client, on_client_cleanup);
 	nvnc_log(NVNC_LOG_DEBUG, "Client connected, new client count: %d",
-			self->nr_clients);
+		 self->nr_clients);
 
 	char id[11];
 	snprintf(id, 11, "%p", nvnc);
 	ctl_server_event_connected(self->ctl, id,
-			nvnc_client_get_hostname(client),
-			nvnc_client_get_auth_username(client),
-			self->nr_clients);
+				   nvnc_client_get_hostname(client),
+				   nvnc_client_get_auth_username(client),
+				   self->nr_clients);
 }
 
 void parse_keyboard_option(struct wayvnc* self, char* arg)
@@ -894,7 +940,8 @@ void parse_keyboard_option(struct wayvnc* self, char* arg)
 	self->kb_layout = arg;
 }
 
-void setup_pointer(struct wayvnc* self) {
+void setup_pointer(struct wayvnc* self)
+{
 	self->pointer_backend.vnc = self->nvnc;
 	self->pointer_backend.output = self->selected_output;
 	if (!self->pointer_manager)
@@ -904,14 +951,18 @@ void setup_pointer(struct wayvnc* self) {
 		pointer_destroy(&self->pointer_backend);
 
 	int pointer_manager_version =
-		zwlr_virtual_pointer_manager_v1_get_version(self->pointer_manager);
+		zwlr_virtual_pointer_manager_v1_get_version(
+			self->pointer_manager);
 
-	self->pointer_backend.pointer = pointer_manager_version >= 2
-		? zwlr_virtual_pointer_manager_v1_create_virtual_pointer_with_output(
-			self->pointer_manager, self->selected_seat->wl_seat,
-			self->selected_output->wl_output)
-		: zwlr_virtual_pointer_manager_v1_create_virtual_pointer(
-			self->pointer_manager, self->selected_seat->wl_seat);
+	self->pointer_backend.pointer =
+		pointer_manager_version >= 2
+			? zwlr_virtual_pointer_manager_v1_create_virtual_pointer_with_output(
+				self->pointer_manager,
+				self->selected_seat->wl_seat,
+				self->selected_output->wl_output)
+			: zwlr_virtual_pointer_manager_v1_create_virtual_pointer(
+				self->pointer_manager,
+				self->selected_seat->wl_seat);
 
 	pointer_init(&self->pointer_backend);
 }
@@ -919,19 +970,18 @@ void setup_pointer(struct wayvnc* self) {
 void log_selected_output(struct wayvnc* self)
 {
 	nvnc_log(NVNC_LOG_INFO, "Capturing output %s",
-			self->selected_output->name);
+		 self->selected_output->name);
 	struct output* output;
-	wl_list_for_each(output, &self->outputs, link) {
+	wl_list_for_each (output, &self->outputs, link) {
 		bool this_output = (output->id == self->selected_output->id);
 		nvnc_log(NVNC_LOG_INFO, "%s %s %dx%d+%dx%d",
-				this_output ? ">>" : "--",
-				output->description,
-				output->width, output->height,
-				output->x, output->y);
+			 this_output ? ">>" : "--", output->description,
+			 output->width, output->height, output->x, output->y);
 	}
 }
 
-void set_selected_output(struct wayvnc* self, struct output* output) {
+void set_selected_output(struct wayvnc* self, struct output* output)
+{
 	if (self->selected_output) {
 		self->selected_output->on_dimension_change = NULL;
 	}
@@ -946,7 +996,7 @@ void switch_to_output(struct wayvnc* self, struct output* output)
 {
 	if (self->selected_output == output) {
 		nvnc_log(NVNC_LOG_INFO, "Already selected output %s",
-				output->name);
+			 output->name);
 		return;
 	}
 	screencopy_stop(&self->screencopy);
@@ -959,7 +1009,8 @@ void switch_to_next_output(struct wayvnc* self)
 {
 	nvnc_log(NVNC_LOG_INFO, "Rotating to next output");
 	struct output* next = output_cycle(&self->outputs,
-			self->selected_output, OUTPUT_CYCLE_FORWARD);
+					   self->selected_output,
+					   OUTPUT_CYCLE_FORWARD);
 
 	switch_to_output(self, next);
 }
@@ -968,18 +1019,25 @@ void switch_to_prev_output(struct wayvnc* self)
 {
 	nvnc_log(NVNC_LOG_INFO, "Rotating to previous output");
 	struct output* prev = output_cycle(&self->outputs,
-			self->selected_output, OUTPUT_CYCLE_REVERSE);
+					   self->selected_output,
+					   OUTPUT_CYCLE_REVERSE);
 	switch_to_output(self, prev);
 }
 
 static int log_level_from_string(const char* str)
 {
-	if (0 == strcmp(str, "quiet")) return NVNC_LOG_PANIC;
-	if (0 == strcmp(str, "error")) return NVNC_LOG_ERROR;
-	if (0 == strcmp(str, "warning")) return NVNC_LOG_WARNING;
-	if (0 == strcmp(str, "info")) return NVNC_LOG_INFO;
-	if (0 == strcmp(str, "debug")) return NVNC_LOG_DEBUG;
-	if (0 == strcmp(str, "trace")) return NVNC_LOG_TRACE;
+	if (0 == strcmp(str, "quiet"))
+		return NVNC_LOG_PANIC;
+	if (0 == strcmp(str, "error"))
+		return NVNC_LOG_ERROR;
+	if (0 == strcmp(str, "warning"))
+		return NVNC_LOG_WARNING;
+	if (0 == strcmp(str, "info"))
+		return NVNC_LOG_INFO;
+	if (0 == strcmp(str, "debug"))
+		return NVNC_LOG_DEBUG;
+	if (0 == strcmp(str, "trace"))
+		return NVNC_LOG_TRACE;
 	return -1;
 }
 
@@ -1081,7 +1139,7 @@ int main(int argc, char* argv[])
 			log_level = log_level_from_string(optarg);
 			if (log_level < 0) {
 				fprintf(stderr, "Invalid log level: %s\n",
-						optarg);
+					optarg);
 				return wayvnc_usage(stderr, 1);
 			}
 			break;
@@ -1105,7 +1163,8 @@ int main(int argc, char* argv[])
 		port = atoi(argv[optind + 1]);
 
 	if (seat_name && disable_input) {
-		nvnc_log(NVNC_LOG_ERROR, "seat and disable-input are conflicting options");
+		nvnc_log(NVNC_LOG_ERROR,
+			 "seat and disable-input are conflicting options");
 		return 1;
 	}
 
@@ -1113,8 +1172,9 @@ int main(int argc, char* argv[])
 	int cfg_rc = cfg_load(&self.cfg, cfg_file);
 	if (cfg_rc != 0 && (cfg_file || errno != ENOENT)) {
 		if (cfg_rc > 0) {
-			nvnc_log(NVNC_LOG_ERROR, "Failed to load config. Error on line %d",
-			          cfg_rc);
+			nvnc_log(NVNC_LOG_ERROR,
+				 "Failed to load config. Error on line %d",
+				 cfg_rc);
 		} else {
 			nvnc_log(NVNC_LOG_ERROR, "Failed to load config. %m");
 		}
@@ -1126,12 +1186,16 @@ int main(int argc, char* argv[])
 		return 1;
 
 	if (cfg_rc == 0) {
-		if (!address) address = self.cfg.address;
-		if (!port) port = self.cfg.port;
+		if (!address)
+			address = self.cfg.address;
+		if (!port)
+			port = self.cfg.port;
 	}
 
-	if (!address) address = DEFAULT_ADDRESS;
-	if (!port) port = DEFAULT_PORT;
+	if (!address)
+		address = DEFAULT_ADDRESS;
+	if (!port)
+		port = DEFAULT_PORT;
 
 	self.disable_input = disable_input;
 
@@ -1178,34 +1242,40 @@ int main(int argc, char* argv[])
 	if (self.keyboard_manager) {
 		self.keyboard_backend.virtual_keyboard =
 			zwp_virtual_keyboard_manager_v1_create_virtual_keyboard(
-				self.keyboard_manager, self.selected_seat->wl_seat);
+				self.keyboard_manager,
+				self.selected_seat->wl_seat);
 
 		struct xkb_rule_names rule_names = {
 			.rules = self.cfg.xkb_rules,
-			.layout = self.kb_layout ? self.kb_layout : self.cfg.xkb_layout,
-			.model = self.cfg.xkb_model ? self.cfg.xkb_model : "pc105",
-			.variant = self.kb_variant ? self.kb_variant :
-				self.cfg.xkb_variant,
+			.layout = self.kb_layout ? self.kb_layout
+						 : self.cfg.xkb_layout,
+			.model = self.cfg.xkb_model ? self.cfg.xkb_model
+						    : "pc105",
+			.variant = self.kb_variant ? self.kb_variant
+						   : self.cfg.xkb_variant,
 			.options = self.cfg.xkb_options,
 		};
 
 		if (keyboard_init(&self.keyboard_backend, &rule_names) < 0) {
-			nvnc_log(NVNC_LOG_ERROR, "Failed to initialise keyboard");
+			nvnc_log(NVNC_LOG_ERROR,
+				 "Failed to initialise keyboard");
 			goto failure;
 		}
 	}
-
 
 	setup_pointer(&self);
 
 #ifdef ENABLE_SCREENCOPY_DMABUF
 	if (init_render_node(&drm_fd) < 0) {
-		nvnc_log(NVNC_LOG_ERROR, "Failed to initialise DRM render node. No GPU acceleration will be available.");
+		nvnc_log(
+			NVNC_LOG_ERROR,
+			"Failed to initialise DRM render node. No GPU acceleration will be available.");
 	}
 #endif
 
 	if (aml_unstable_abi_version != AML_UNSTABLE_API)
-		nvnc_log(NVNC_LOG_PANIC, "libaml is incompatible with this build of wayvnc!");
+		nvnc_log(NVNC_LOG_PANIC,
+			 "libaml is incompatible with this build of wayvnc!");
 
 	struct aml* aml = aml_new();
 	if (!aml)
@@ -1223,19 +1293,20 @@ int main(int argc, char* argv[])
 		screencopy_init(&self.screencopy);
 
 	if (!self.screencopy.manager) {
-		nvnc_log(NVNC_LOG_ERROR, "screencopy is not supported by compositor");
+		nvnc_log(NVNC_LOG_ERROR,
+			 "screencopy is not supported by compositor");
 		goto capture_failure;
 	}
 
 	if (self.data_control.manager)
 		data_control_init(&self.data_control, self.display, self.nvnc,
-				self.selected_seat->wl_seat);
+				  self.selected_seat->wl_seat);
 
 	self.screencopy.overlay_cursor = overlay_cursor;
 
 	if (show_performance)
-		self.performance_ticker = aml_ticker_new(1000000, on_perf_tick,
-				&self, NULL);
+		self.performance_ticker =
+			aml_ticker_new(1000000, on_perf_tick, &self, NULL);
 
 	const struct ctl_server_actions ctl_actions = {
 		.userdata = &self,

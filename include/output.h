@@ -54,7 +54,7 @@ struct output {
 struct output* output_new(struct wl_output* wl_output, uint32_t id);
 void output_destroy(struct output* output);
 void output_set_xdg_output(struct output* output,
-                           struct zxdg_output_v1* xdg_output);
+			   struct zxdg_output_v1* xdg_output);
 void output_list_destroy(struct wl_list* list);
 struct output* output_find_by_id(struct wl_list* list, uint32_t id);
 struct output* output_find_by_name(struct wl_list* list, const char* name);
@@ -65,17 +65,16 @@ enum output_cycle_direction {
 	OUTPUT_CYCLE_REVERSE,
 };
 struct output* output_cycle(const struct wl_list* list,
-		const struct output* current,
-		enum output_cycle_direction);
+			    const struct output* current,
+			    enum output_cycle_direction);
 
 uint32_t output_get_transformed_width(const struct output* self);
 uint32_t output_get_transformed_height(const struct output* self);
 
-void output_transform_coord(const struct output* self,
-                            uint32_t src_x, uint32_t src_y,
-                            uint32_t* dst_x, uint32_t* dst_y);
-void output_transform_box_coord(const struct output* self,
-                                uint32_t src_x0, uint32_t src_y0,
-                                uint32_t src_x1, uint32_t src_y1,
-                                uint32_t* dst_x0, uint32_t* dst_y0,
-                                uint32_t* dst_x1, uint32_t* dst_y1);
+void output_transform_coord(const struct output* self, uint32_t src_x,
+			    uint32_t src_y, uint32_t* dst_x, uint32_t* dst_y);
+void output_transform_box_coord(const struct output* self, uint32_t src_x0,
+				uint32_t src_y0, uint32_t src_x1,
+				uint32_t src_y1, uint32_t* dst_x0,
+				uint32_t* dst_y0, uint32_t* dst_x1,
+				uint32_t* dst_y1);

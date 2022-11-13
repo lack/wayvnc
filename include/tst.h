@@ -21,6 +21,7 @@
 #include <stdint.h>
 #include <inttypes.h>
 
+// clang-format off
 #define XSTR(s) STR(s)
 #define STR(s) #s
 
@@ -143,3 +144,4 @@
 	else \
 		r = 1; \
 } while(0);
+// clang-format on

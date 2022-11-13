@@ -32,7 +32,7 @@
 	X(string, xkb_model) \
 	X(string, xkb_layout) \
 	X(string, xkb_variant) \
-	X(string, xkb_options) \
+	X(string, xkb_options)
 
 struct cfg {
 #define string char*

@@ -44,7 +44,7 @@ void intset_destroy(struct intset* self)
 	memset(self, 0, sizeof(*self));
 }
 
-static int intset__grow(struct intset*  self)
+static int intset__grow(struct intset* self)
 {
 	size_t new_cap = self->cap * 2;
 

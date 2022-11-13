@@ -33,17 +33,18 @@ void jsonipc_error_set_new(struct jsonipc_error* err, int code, json_t* data)
 	err->data = data;
 }
 
-void jsonipc_error_printf(struct jsonipc_error* err, int code, const char* fmt, ...)
+void jsonipc_error_printf(struct jsonipc_error* err, int code, const char* fmt,
+			  ...)
 {
 	va_list ap;
 	va_start(ap, fmt);
-	jsonipc_error_set_new(err, code, json_pack("{s:o}", "error",
-				jvprintf(fmt, ap)));
+	jsonipc_error_set_new(err, code,
+			      json_pack("{s:o}", "error", jvprintf(fmt, ap)));
 	va_end(ap);
 }
 
 void jsonipc_error_set_from_errno(struct jsonipc_error* err,
-		const char* context)
+				  const char* context)
 {
 	jsonipc_error_printf(err, errno, "%s: %m", context);
 }
@@ -57,28 +58,26 @@ void jsonipc_error_cleanup(struct jsonipc_error* err)
 
 inline static bool is_valid_id(json_t* id)
 {
-	return id == NULL ||
-		json_is_string(id) || json_is_number(id);
+	return id == NULL || json_is_string(id) || json_is_number(id);
 }
 
 struct jsonipc_request* jsonipc_request_parse_new(json_t* root,
-		struct jsonipc_error* err)
+						  struct jsonipc_error* err)
 {
 	struct jsonipc_request* ipc = calloc(1, sizeof(*ipc));
 	ipc->json = root;
 	json_incref(ipc->json);
 	json_error_t unpack_error;
 	if (json_unpack_ex(root, &unpack_error, 0, "{s:s, s?O, s?O}",
-				jsonipc_method_key, &ipc->method,
-				jsonipc_params_key, &ipc->params,
-				jsonipc_id_key, &ipc->id) == -1) {
+			   jsonipc_method_key, &ipc->method, jsonipc_params_key,
+			   &ipc->params, jsonipc_id_key, &ipc->id)
+	    == -1) {
 		jsonipc_error_printf(err, EINVAL, unpack_error.text);
 		goto failure;
 	}
 	if (!is_valid_id(ipc->id)) {
 		char* id = json_dumps(ipc->id, JSON_EMBED | JSON_ENCODE_ANY);
-		jsonipc_error_printf(err, EINVAL,
-				"Invalid ID \"%s\"", id);
+		jsonipc_error_printf(err, EINVAL, "Invalid ID \"%s\"", id);
 		free(id);
 		goto failure;
 	}
@@ -90,7 +89,7 @@ failure:
 }
 
 struct jsonipc_request* jsonipc_request__new(const char* method, json_t* params,
-		json_t* id)
+					     json_t* id)
 {
 	struct jsonipc_request* ipc = calloc(1, sizeof(*ipc));
 	ipc->method = method;
@@ -112,17 +111,16 @@ struct jsonipc_request* jsonipc_event_new(const char* method, json_t* params)
 }
 
 struct jsonipc_request* jsonipc_event_parse_new(json_t* root,
-		struct jsonipc_error* err)
+						struct jsonipc_error* err)
 {
 	return jsonipc_request_parse_new(root, err);
 }
 
 json_t* jsonipc_request_pack(struct jsonipc_request* self, json_error_t* err)
 {
-	return json_pack_ex(err, 0, "{s:s, s:O*, s:O*}",
-			jsonipc_method_key, self->method,
-			jsonipc_params_key, self->params,
-			jsonipc_id_key, self->id);
+	return json_pack_ex(err, 0, "{s:s, s:O*, s:O*}", jsonipc_method_key,
+			    self->method, jsonipc_params_key, self->params,
+			    jsonipc_id_key, self->id);
 }
 
 void jsonipc_request_destroy(struct jsonipc_request* self)
@@ -134,23 +132,22 @@ void jsonipc_request_destroy(struct jsonipc_request* self)
 }
 
 struct jsonipc_response* jsonipc_response_parse_new(json_t* root,
-		struct jsonipc_error* err)
+						    struct jsonipc_error* err)
 {
 	struct jsonipc_response* ipc = calloc(1, sizeof(*ipc));
 	ipc->json = root;
 	json_incref(ipc->json);
 	json_error_t unpack_error;
 	if (json_unpack_ex(root, &unpack_error, 0, "{s:i, s?O, s?O}",
-				jsonipc_code_key, &ipc->code,
-				jsonipc_data_key, &ipc->data,
-				jsonipc_id_key, &ipc->id) == -1) {
+			   jsonipc_code_key, &ipc->code, jsonipc_data_key,
+			   &ipc->data, jsonipc_id_key, &ipc->id)
+	    == -1) {
 		jsonipc_error_printf(err, EINVAL, unpack_error.text);
 		goto failure;
 	}
 	if (!is_valid_id(ipc->id)) {
 		char* id = json_dumps(ipc->id, JSON_EMBED | JSON_ENCODE_ANY);
-		jsonipc_error_printf(err, EINVAL,
-				"Invalid ID \"%s\"", id);
+		jsonipc_error_printf(err, EINVAL, "Invalid ID \"%s\"", id);
 		free(id);
 		goto failure;
 	}
@@ -161,8 +158,8 @@ failure:
 	return NULL;
 }
 
-struct jsonipc_response* jsonipc_response_new(int code,
-		json_t* data, json_t* id)
+struct jsonipc_response* jsonipc_response_new(int code, json_t* data,
+					      json_t* id)
 {
 	struct jsonipc_response* rsp = calloc(1, sizeof(*rsp));
 	rsp->code = code;
@@ -173,9 +170,8 @@ struct jsonipc_response* jsonipc_response_new(int code,
 	return rsp;
 }
 
-struct jsonipc_response* jsonipc_error_response_new(
-		struct jsonipc_error* err,
-		json_t* id)
+struct jsonipc_response* jsonipc_error_response_new(struct jsonipc_error* err,
+						    json_t* id)
 {
 	return jsonipc_response_new(err->code, err->data, id);
 }
@@ -190,10 +186,9 @@ void jsonipc_response_destroy(struct jsonipc_response* self)
 
 json_t* jsonipc_response_pack(struct jsonipc_response* self, json_error_t* err)
 {
-	return json_pack_ex(err, 0, "{s:i, s:O*, s:O*}",
-			jsonipc_code_key, self->code,
-			jsonipc_id_key, self->id,
-			jsonipc_data_key, self->data);
+	return json_pack_ex(err, 0, "{s:i, s:O*, s:O*}", jsonipc_code_key,
+			    self->code, jsonipc_id_key, self->id,
+			    jsonipc_data_key, self->data);
 }
 
 json_t* jprintf(const char* fmt, ...)

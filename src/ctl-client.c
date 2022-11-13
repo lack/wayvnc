@@ -30,17 +30,16 @@
 #include "strlcpy.h"
 #include "util.h"
 
-#define WARN(fmt, ...) \
-	fprintf(stderr, "[WARNING] " fmt "\n", ##__VA_ARGS__)
+#define WARN(fmt, ...) fprintf(stderr, "[WARNING] " fmt "\n", ##__VA_ARGS__)
 
 static bool do_debug = false;
 
 #define DEBUG(fmt, ...) \
 	if (do_debug) \
-		fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, ##__VA_ARGS__);
+		fprintf(stderr, "[%s:%d] " fmt "\n", __FILE__, __LINE__, \
+			##__VA_ARGS__);
 
-#define FAILED_TO(action) \
-	WARN("Failed to " action ": %m");
+#define FAILED_TO(action) WARN("Failed to " action ": %m");
 
 struct ctl_client {
 	void* userdata;
@@ -107,8 +106,8 @@ void* ctl_client_userdata(struct ctl_client* self)
 	return self->userdata;
 }
 
-static struct jsonipc_request*	ctl_client_parse_args(struct ctl_client* self,
-		int argc, char* argv[])
+static struct jsonipc_request* ctl_client_parse_args(struct ctl_client* self,
+						     int argc, char* argv[])
 {
 	struct jsonipc_request* request = NULL;
 	const char* method = argv[0];
@@ -149,7 +148,7 @@ failure:
 }
 
 static ssize_t ctl_client_send_request(struct ctl_client* self,
-		struct jsonipc_request* request)
+				       struct jsonipc_request* request)
 {
 	json_error_t err;
 	json_t* packed = jsonipc_request_pack(request, &err);
@@ -174,7 +173,8 @@ static json_t* json_from_buffer(struct ctl_client* self)
 	json_error_t err;
 	json_t* root = json_loadb(self->read_buffer, self->read_len, 0, &err);
 	if (root) {
-		advance_read_buffer(&self->read_buffer, &self->read_len, err.position);
+		advance_read_buffer(&self->read_buffer, &self->read_len,
+				    err.position);
 	} else if (json_error_code(&err) == json_error_premature_end_of_input) {
 		DEBUG("Awaiting more data");
 		errno = ENODATA;
@@ -192,11 +192,7 @@ static json_t* read_one_object(struct ctl_client* self, int timeout_ms)
 		return root;
 	if (errno != ENODATA)
 		return NULL;
-	struct pollfd pfd = {
-		.fd = self->fd,
-		.events = POLLIN,
-		.revents = 0
-	};
+	struct pollfd pfd = { .fd = self->fd, .events = POLLIN, .revents = 0 };
 	while (root == NULL) {
 		int n = poll(&pfd, 1, timeout_ms);
 		if (n == -1) {
@@ -229,15 +225,16 @@ static json_t* read_one_object(struct ctl_client* self, int timeout_ms)
 	return root;
 }
 
-static struct jsonipc_response* ctl_client_wait_for_response(struct ctl_client* self)
+static struct jsonipc_response* ctl_client_wait_for_response(
+	struct ctl_client* self)
 {
 	DEBUG("Waiting for a response");
 	json_t* root = read_one_object(self, 1000);
 	if (!root)
 		return NULL;
 	struct jsonipc_error jipc_err = JSONIPC_ERR_INIT;
-	struct jsonipc_response* response = jsonipc_response_parse_new(root,
-			&jipc_err);
+	struct jsonipc_response* response =
+		jsonipc_response_parse_new(root, &jipc_err);
 	if (!response) {
 		char* msg = json_dumps(jipc_err.data, JSON_EMBED);
 		WARN("Could not parse json: %s", msg);
@@ -256,9 +253,10 @@ static void print_error(struct jsonipc_response* response, const char* method)
 	json_t* data = response->data;
 	if (json_is_string(data))
 		printf(": %s", json_string_value(data));
-	else if (json_is_object(data) &&
-			json_is_string(json_object_get(data, "error")))
-		printf(": %s", json_string_value(json_object_get(data, "error")));
+	else if (json_is_object(data)
+		 && json_is_string(json_object_get(data, "error")))
+		printf(": %s",
+		       json_string_value(json_object_get(data, "error")));
 	else
 		json_dumpf(response->data, stdout, JSON_INDENT(2));
 out:
@@ -269,18 +267,17 @@ static void print_command_usage(const char* name, json_t* data)
 {
 	char* desc = NULL;
 	json_t* params = NULL;
-	json_unpack(data, "{s:s, s?o}", "description", &desc,
-			"params", &params);
+	json_unpack(data, "{s:s, s?o}", "description", &desc, "params",
+		    &params);
 	printf("Usage: wayvncctl [options] %s%s\n\n%s\n", name,
-			params ? " [params]" : "",
-			desc);
+	       params ? " [params]" : "", desc);
 	if (params) {
 		printf("\nParameters:");
 		const char* param_name;
 		json_t* param_value;
-		json_object_foreach(params, param_name, param_value) {
+		json_object_foreach (params, param_name, param_value) {
 			printf("\n  --%s=...\n    %s\n", param_name,
-					json_string_value(param_value));
+			       json_string_value(param_value));
 		}
 	}
 	printf("\nRun 'wayvncctl --help' for allowed Options\n");
@@ -290,17 +287,16 @@ static void print_event_details(const char* name, json_t* data)
 {
 	char* desc = NULL;
 	json_t* params = NULL;
-	json_unpack(data, "{s:s, s?o}", "description", &desc,
-			"params", &params);
-	printf("Event: %s\n\n%s\n", name,
-			desc);
+	json_unpack(data, "{s:s, s?o}", "description", &desc, "params",
+		    &params);
+	printf("Event: %s\n\n%s\n", name, desc);
 	if (params) {
 		printf("\nParameters:");
 		const char* param_name;
 		json_t* param_value;
-		json_object_foreach(params, param_name, param_value) {
+		json_object_foreach (params, param_name, param_value) {
 			printf("\n  %s:...\n    %s\n", param_name,
-					json_string_value(param_value));
+			       json_string_value(param_value));
 		}
 	}
 }
@@ -313,14 +309,14 @@ static void print_help(json_t* data, json_t* request)
 
 		size_t index;
 		json_t* value;
-		json_array_foreach(cmd_list, index, value) {
+		json_array_foreach (cmd_list, index, value) {
 			printf("  - %s\n", json_string_value(value));
 		}
 		printf("\nRun 'wayvncctl command-name --help' for command-specific details.\n");
 
 		printf("\nSupported events:\n");
 		json_t* evt_list = json_object_get(data, "events");
-		json_array_foreach(evt_list, index, value) {
+		json_array_foreach (evt_list, index, value) {
 			printf("  - %s\n", json_string_value(value));
 		}
 		printf("\nRun 'wayvncctl help --event=event-name' for event-specific details.\n");
@@ -330,7 +326,7 @@ static void print_help(json_t* data, json_t* request)
 	bool is_command = json_object_get(request, "command");
 	const char* key;
 	json_t* value;
-	json_object_foreach(data, key, value) {
+	json_object_foreach (data, key, value) {
 		if (is_command)
 			print_command_usage(key, value);
 		else
@@ -343,12 +339,11 @@ static void pretty_version(json_t* data)
 	printf("wayvnc is running:\n");
 	const char* key;
 	json_t* value;
-	json_object_foreach(data, key, value)
+	json_object_foreach (data, key, value)
 		printf("  %s: %s\n", key, json_string_value(value));
 }
 
-static void pretty_print(json_t* data,
-		struct jsonipc_request* request)
+static void pretty_print(json_t* data, struct jsonipc_request* request)
 {
 	const char* method = request->method;
 	if (strcmp(method, "help") == 0)
@@ -366,9 +361,9 @@ static void print_compact_json(json_t* data)
 }
 
 static int ctl_client_print_response(struct ctl_client* self,
-		struct jsonipc_request* request,
-		struct jsonipc_response* response,
-		unsigned flags)
+				     struct jsonipc_request* request,
+				     struct jsonipc_response* response,
+				     unsigned flags)
 {
 	DEBUG("Response code: %d", response->code);
 	if (response->data) {
@@ -421,12 +416,12 @@ static bool json_has_content(json_t* root)
 	case JSON_STRING:
 		return json_string_value(root)[0] != '\0';
 	case JSON_OBJECT:
-		json_object_foreach(root, key, value)
+		json_object_foreach (root, key, value)
 			if (json_has_content(value))
 				return true;
 		return false;
 	case JSON_ARRAY:
-		json_array_foreach(root, i, value)
+		json_array_foreach (root, i, value)
 			if (json_has_content(value))
 				return true;
 		return false;
@@ -440,14 +435,14 @@ static void print_as_yaml(json_t* data, int level, bool needs_leading_newline)
 	const char* key;
 	json_t* value;
 	bool needs_indent = needs_leading_newline;
-	switch(json_typeof(data)) {
+	switch (json_typeof(data)) {
 	case JSON_NULL:
 		printf("<null>\n");
 		break;
 	case JSON_OBJECT:
 		if (json_object_size(data) > 0 && needs_leading_newline)
-				printf("\n");
-		json_object_foreach(data, key, value) {
+			printf("\n");
+		json_object_foreach (data, key, value) {
 			if (!json_has_content(value))
 				continue;
 			if (needs_indent)
@@ -461,7 +456,7 @@ static void print_as_yaml(json_t* data, int level, bool needs_leading_newline)
 	case JSON_ARRAY:
 		if (json_array_size(data) > 0 && needs_leading_newline)
 			printf("\n");
-		json_array_foreach(data, i, value) {
+		json_array_foreach (data, i, value) {
 			if (!json_has_content(value))
 				continue;
 			print_indent(level);
@@ -508,18 +503,20 @@ static void ctl_client_event_loop(struct ctl_client* self, unsigned flags)
 		if (!root)
 			break;
 		struct jsonipc_error err = JSONIPC_ERR_INIT;
-		struct jsonipc_request* event = jsonipc_event_parse_new(root, &err);
+		struct jsonipc_request* event =
+			jsonipc_event_parse_new(root, &err);
 		json_decref(root);
 		print_event(event, flags);
 		jsonipc_request_destroy(event);
 	}
 }
 
-int ctl_client_run_command(struct ctl_client* self,
-		int argc, char* argv[], unsigned flags)
+int ctl_client_run_command(struct ctl_client* self, int argc, char* argv[],
+			   unsigned flags)
 {
 	int result = -1;
-	struct jsonipc_request*	request = ctl_client_parse_args(self, argc, argv);
+	struct jsonipc_request* request =
+		ctl_client_parse_args(self, argc, argv);
 	if (!request)
 		goto parse_failure;
 

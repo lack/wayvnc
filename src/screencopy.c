@@ -59,8 +59,9 @@ void screencopy_stop(struct screencopy* self)
 }
 
 static void screencopy_linux_dmabuf(void* data,
-			      struct zwlr_screencopy_frame_v1* frame,
-			      uint32_t format, uint32_t width, uint32_t height)
+				    struct zwlr_screencopy_frame_v1* frame,
+				    uint32_t format, uint32_t width,
+				    uint32_t height)
 {
 #ifdef ENABLE_SCREENCOPY_DMABUF
 	struct screencopy* self = data;
@@ -76,7 +77,7 @@ static void screencopy_linux_dmabuf(void* data,
 }
 
 static void screencopy_buffer_done(void* data,
-			      struct zwlr_screencopy_frame_v1* frame)
+				   struct zwlr_screencopy_frame_v1* frame)
 {
 	struct screencopy* self = data;
 	uint32_t width, height, stride, fourcc;
@@ -116,7 +117,7 @@ static void screencopy_buffer_done(void* data,
 		zwlr_screencopy_frame_v1_copy(self->frame, buffer->wl_buffer);
 	else
 		zwlr_screencopy_frame_v1_copy_with_damage(self->frame,
-				buffer->wl_buffer);
+							  buffer->wl_buffer);
 }
 
 static void screencopy_buffer(void* data,
@@ -139,8 +140,7 @@ static void screencopy_buffer(void* data,
 	}
 }
 
-static void screencopy_flags(void* data,
-			     struct zwlr_screencopy_frame_v1* frame,
+static void screencopy_flags(void* data, struct zwlr_screencopy_frame_v1* frame,
 			     uint32_t flags)
 {
 	(void)frame;
@@ -151,14 +151,14 @@ static void screencopy_flags(void* data,
 		!!(flags & ZWLR_SCREENCOPY_FRAME_V1_FLAGS_Y_INVERT);
 }
 
-static void screencopy_ready(void* data,
-			     struct zwlr_screencopy_frame_v1* frame,
+static void screencopy_ready(void* data, struct zwlr_screencopy_frame_v1* frame,
 			     uint32_t sec_hi, uint32_t sec_lo, uint32_t nsec)
 {
 	struct screencopy* self = data;
 
 	uint64_t sec = (uint64_t)sec_hi << 32 | (uint64_t)sec_lo;
-	uint64_t pts = sec * UINT64_C(1000000) + (uint64_t)nsec / UINT64_C(1000);
+	uint64_t pts =
+		sec * UINT64_C(1000000) + (uint64_t)nsec / UINT64_C(1000);
 
 	DTRACE_PROBE2(wayvnc, screencopy_ready, self, pts);
 
@@ -202,8 +202,8 @@ static void screencopy_failed(void* data,
 
 static void screencopy_damage(void* data,
 			      struct zwlr_screencopy_frame_v1* frame,
-			      uint32_t x, uint32_t y,
-			      uint32_t width, uint32_t height)
+			      uint32_t x, uint32_t y, uint32_t width,
+			      uint32_t height)
 {
 	struct screencopy* self = data;
 
@@ -228,8 +228,8 @@ static int screencopy__start_capture(struct screencopy* self)
 
 	self->start_time = gettime_us();
 
-	self->frame = zwlr_screencopy_manager_v1_capture_output(self->manager,
-			self->overlay_cursor, self->wl_output);
+	self->frame = zwlr_screencopy_manager_v1_capture_output(
+		self->manager, self->overlay_cursor, self->wl_output);
 	if (!self->frame)
 		return -1;
 

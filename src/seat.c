@@ -25,7 +25,7 @@
 #include "strlcpy.h"
 
 static void seat_capabilities(void* data, struct wl_seat* wl_seat,
-                              uint32_t capabilities)
+			      uint32_t capabilities)
 {
 	struct seat* self = data;
 
@@ -69,7 +69,7 @@ void seat_list_destroy(struct wl_list* list)
 	struct seat* seat;
 	struct seat* tmp;
 
-	wl_list_for_each_safe(seat, tmp, list, link) {
+	wl_list_for_each_safe (seat, tmp, list, link) {
 		wl_list_remove(&seat->link);
 		seat_destroy(seat);
 	}
@@ -79,7 +79,7 @@ struct seat* seat_find_by_name(struct wl_list* list, const char* name)
 {
 	struct seat* seat;
 
-	wl_list_for_each(seat, list, link)
+	wl_list_for_each (seat, list, link)
 		if (strcmp(seat->name, name) == 0)
 			return seat;
 
@@ -90,7 +90,7 @@ struct seat* seat_find_by_id(struct wl_list* list, uint32_t id)
 {
 	struct seat* seat;
 
-	wl_list_for_each(seat, list, link)
+	wl_list_for_each (seat, list, link)
 		if (seat->id == id)
 			return seat;
 
@@ -101,7 +101,7 @@ struct seat* seat_first(struct wl_list* list)
 {
 	struct seat* seat;
 
-	wl_list_for_each(seat, list, link)
+	wl_list_for_each (seat, list, link)
 		return seat;
 
 	return NULL;

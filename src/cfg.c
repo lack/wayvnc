@@ -31,7 +31,7 @@ static char* cfg__get_default_path(void)
 	char* xdg_config_home = getenv("XDG_CONFIG_HOME");
 	if (xdg_config_home) {
 		snprintf(result, sizeof(result), "%s/wayvnc/config",
-		         xdg_config_home);
+			 xdg_config_home);
 		result[sizeof(result) - 1] = '\0';
 		return result;
 	}
@@ -65,8 +65,8 @@ static inline char* cfg__trim(char* str)
 	return cfg__trim_right(cfg__trim_left(str));
 }
 
-static int cfg__load_key_value(struct cfg* self,
-                               const char* key, const char* value)
+static int cfg__load_key_value(struct cfg* self, const char* key,
+			       const char* value)
 {
 #define LOAD_bool(v) (strcmp(v, "false") != 0)
 #define LOAD_string(v) strdup(v)
@@ -74,7 +74,7 @@ static int cfg__load_key_value(struct cfg* self,
 
 #define X(type, name) \
 	if (strcmp(XSTR(name), key) == 0) { \
-		self->name = LOAD_ ## type(value); \
+		self->name = LOAD_##type(value); \
 		return 0; \
 	}
 
@@ -109,7 +109,7 @@ static int cfg__load_line(struct cfg* self, char* line)
 int cfg_load(struct cfg* self, const char* requested_path)
 {
 	const char* path = requested_path ? requested_path
-	                                  : cfg__get_default_path();
+					  : cfg__get_default_path();
 
 	if (!path)
 		return -1;
@@ -146,7 +146,7 @@ void cfg_destroy(struct cfg* self)
 #define DESTROY_uint(...)
 #define DESTROY_string(p) free(p)
 
-#define X(type, name) DESTROY_ ## type(self->name);
+#define X(type, name) DESTROY_##type(self->name);
 	X_CFG_LIST
 #undef X
 

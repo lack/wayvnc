@@ -21,14 +21,14 @@
 
 static inline uint64_t timespec_to_us(const struct timespec* ts)
 {
-	return (uint64_t)ts->tv_sec * UINT64_C(1000000) +
-	       (uint64_t)ts->tv_nsec / UINT64_C(1000);
+	return (uint64_t)ts->tv_sec * UINT64_C(1000000)
+	       + (uint64_t)ts->tv_nsec / UINT64_C(1000);
 }
 
 static inline uint64_t timespec_to_ms(const struct timespec* ts)
 {
-	return (uint64_t)ts->tv_sec * UINT64_C(1000) +
-	       (uint64_t)ts->tv_nsec / UINT64_C(1000000);
+	return (uint64_t)ts->tv_sec * UINT64_C(1000)
+	       + (uint64_t)ts->tv_nsec / UINT64_C(1000000);
 }
 
 static inline uint64_t gettime_us(void)

@@ -24,28 +24,26 @@ struct cmd_response;
 
 struct ctl_server_actions {
 	void* userdata;
-	struct cmd_response* (*on_output_cycle)(struct ctl*,
-			enum output_cycle_direction direction);
+	struct cmd_response* (*on_output_cycle)(
+		struct ctl*, enum output_cycle_direction direction);
 	struct cmd_response* (*on_output_switch)(struct ctl*,
-			const char* output_name);
+						 const char* output_name);
 };
 
 struct ctl* ctl_server_new(const char* socket_path,
-		const struct ctl_server_actions* actions);
+			   const struct ctl_server_actions* actions);
 void ctl_server_destroy(struct ctl*);
 void* ctl_server_userdata(struct ctl*);
 
 struct cmd_response* cmd_ok(void);
 struct cmd_response* cmd_failed(const char* fmt, ...);
 
-void ctl_server_event_connected(struct ctl*,
-		const char* client_id,
-		const char* client_hostname,
-		const char* client_username,
-		int new_connection_count);
+void ctl_server_event_connected(struct ctl*, const char* client_id,
+				const char* client_hostname,
+				const char* client_username,
+				int new_connection_count);
 
-void ctl_server_event_disconnected(struct ctl*,
-		const char* client_id,
-		const char* client_hostname,
-		const char* client_username,
-		int new_connection_count);
+void ctl_server_event_disconnected(struct ctl*, const char* client_id,
+				   const char* client_hostname,
+				   const char* client_username,
+				   int new_connection_count);

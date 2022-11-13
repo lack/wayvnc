@@ -25,9 +25,20 @@ as far as coding style is concererned, with the following exceptions:
  * When declaring pointer variables, the asterisk (`*`) is placed on the left
    with the type rather than the variable name. Declaring multiple variables in
    the same line is not allowed.
- * Wrapped argument lists should not be aligned. Use two tabs instead. There is
-   a lot of code that uses aligned argument lists in the project, but I have
-   come to the conclusion that these alignments are not very nice to maintain.
+
+### clang-formatter
+
+This project includes a .clang-formatter configuration whuch works well 90% of
+the time. For the edge cases where it decreases reasibility, you may use the
+following comments to exclude small bits of code from its clutches:
+```
+// clang-format off
+... specially-formatted code ...
+// clang-format on
+```
+
+Pull requests to this project must run all code through `clang-formatter`, and a
+github action script will block code that does not conform to the style guide.
 
 ## No Brown M&Ms
 

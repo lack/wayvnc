@@ -47,7 +47,7 @@ struct kb_mods {
 };
 
 static void append_entry(struct keyboard* self, xkb_keysym_t symbol,
-                         xkb_keycode_t code, int level)
+			 xkb_keycode_t code, int level)
 {
 	if (self->lookup_table_size <= self->lookup_table_length) {
 		size_t new_size = self->lookup_table_size * 2;
@@ -77,8 +77,8 @@ static void key_iter(struct xkb_keymap* map, xkb_keycode_t code, void* userdata)
 	for (size_t level = 0; level < n_levels; level++) {
 		const xkb_keysym_t* symbols;
 		size_t n_syms = xkb_keymap_key_get_syms_by_level(map, code, 0,
-				                                 level,
-				                                 &symbols);
+								 level,
+								 &symbols);
 
 		for (size_t sym_idx = 0; sym_idx < n_syms; sym_idx++)
 			append_entry(self, symbols[sym_idx], code, level);
@@ -114,7 +114,8 @@ static int create_lookup_table(struct keyboard* self)
 	if (!self->lookup_table)
 		return -1;
 
-	xkb_keymap_key_for_each(self->keymap, key_iter, self);
+	xkb_keymap_key_for_each (self->keymap, key_iter, self)
+		;
 
 	qsort(self->lookup_table, self->lookup_table_length,
 	      sizeof(*self->lookup_table), compare_symbols);
@@ -132,7 +133,7 @@ static char* get_symbol_name(xkb_keysym_t sym, char* dst, size_t size)
 }
 
 static void keyboard__dump_entry(const struct keyboard* self,
-                                 const struct table_entry* entry)
+				 const struct table_entry* entry)
 {
 	char sym_name[256];
 	get_symbol_name(entry->symbol, sym_name, sizeof(sym_name));
@@ -143,8 +144,8 @@ static void keyboard__dump_entry(const struct keyboard* self,
 	bool is_pressed MAYBE_UNUSED =
 		intset_is_set(&self->key_state, entry->code);
 
-	nvnc_log(NVNC_LOG_DEBUG, "symbol=%s level=%d code=%s %s", sym_name, entry->level,
-	          code_name, is_pressed ? "pressed" : "released");
+	nvnc_log(NVNC_LOG_DEBUG, "symbol=%s level=%d code=%s %s", sym_name,
+		 entry->level, code_name, is_pressed ? "pressed" : "released");
 }
 
 void keyboard_dump_lookup_table(const struct keyboard* self)
@@ -153,7 +154,8 @@ void keyboard_dump_lookup_table(const struct keyboard* self)
 		keyboard__dump_entry(self, &self->lookup_table[i]);
 }
 
-int keyboard_init(struct keyboard* self, const struct xkb_rule_names* rule_names)
+int keyboard_init(struct keyboard* self,
+		  const struct xkb_rule_names* rule_names)
 {
 	self->context = xkb_context_new(XKB_CONTEXT_NO_FLAGS);
 	if (!self->context)
@@ -167,7 +169,9 @@ int keyboard_init(struct keyboard* self, const struct xkb_rule_names* rule_names
 		goto keymap_failure;
 
 	if (xkb_keymap_num_layouts(self->keymap) > 1)
-		nvnc_log(NVNC_LOG_WARNING, "Multiple keyboard layouts have been specified, but only one is supported.");
+		nvnc_log(
+			NVNC_LOG_WARNING,
+			"Multiple keyboard layouts have been specified, but only one is supported.");
 
 	self->state = xkb_state_new(self->keymap);
 	if (!self->state)
@@ -176,11 +180,11 @@ int keyboard_init(struct keyboard* self, const struct xkb_rule_names* rule_names
 	if (create_lookup_table(self) < 0)
 		goto table_failure;
 
-//	keyboard_dump_lookup_table(self);
+	//	keyboard_dump_lookup_table(self);
 
 	char* keymap_string =
 		xkb_keymap_get_as_string(self->keymap,
-		                         XKB_KEYMAP_FORMAT_TEXT_V1);
+					 XKB_KEYMAP_FORMAT_TEXT_V1);
 	if (!keymap_string)
 		goto keymap_string_failure;
 
@@ -192,7 +196,8 @@ int keyboard_init(struct keyboard* self, const struct xkb_rule_names* rule_names
 
 	size_t written = 0;
 	while (written < keymap_size) {
-		ssize_t ret = write(keymap_fd, keymap_string + written, keymap_size - written);
+		ssize_t ret = write(keymap_fd, keymap_string + written,
+				    keymap_size - written);
 		if (ret == -1 && errno == EINTR)
 			continue;
 		if (ret == -1)
@@ -203,8 +208,8 @@ int keyboard_init(struct keyboard* self, const struct xkb_rule_names* rule_names
 	free(keymap_string);
 
 	zwp_virtual_keyboard_v1_keymap(self->virtual_keyboard,
-	                               WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1,
-	                               keymap_fd, keymap_size);
+				       WL_KEYBOARD_KEYMAP_FORMAT_XKB_V1,
+				       keymap_fd, keymap_size);
 
 	close(keymap_fd);
 
@@ -237,13 +242,13 @@ void keyboard_destroy(struct keyboard* self)
 }
 
 struct table_entry* keyboard_find_symbol(const struct keyboard* self,
-                                         xkb_keysym_t symbol)
+					 xkb_keysym_t symbol)
 {
 	struct table_entry cmp = { .symbol = symbol };
 
 	struct table_entry* entry =
 		bsearch(&cmp, self->lookup_table, self->lookup_table_length,
-		        sizeof(*self->lookup_table), compare_symbols2);
+			sizeof(*self->lookup_table), compare_symbols2);
 
 	if (!entry)
 		return NULL;
@@ -258,27 +263,26 @@ static void keyboard_send_mods(struct keyboard* self)
 {
 	xkb_mod_mask_t depressed, latched, locked, group;
 
-	depressed = xkb_state_serialize_mods(self->state, XKB_STATE_MODS_DEPRESSED);
+	depressed =
+		xkb_state_serialize_mods(self->state, XKB_STATE_MODS_DEPRESSED);
 	latched = xkb_state_serialize_mods(self->state, XKB_STATE_MODS_LATCHED);
 	locked = xkb_state_serialize_mods(self->state, XKB_STATE_MODS_LOCKED);
 	group = xkb_state_serialize_mods(self->state, XKB_STATE_MODS_EFFECTIVE);
 
 	zwp_virtual_keyboard_v1_modifiers(self->virtual_keyboard, depressed,
-	                                  latched, locked, group);
+					  latched, locked, group);
 }
 
 static void keyboard_apply_mods(struct keyboard* self, xkb_keycode_t code,
-                                bool is_pressed)
+				bool is_pressed)
 {
 	enum xkb_state_component comp, compmask;
 
 	comp = xkb_state_update_key(self->state, code,
-	                            is_pressed ? XKB_KEY_DOWN : XKB_KEY_UP);
+				    is_pressed ? XKB_KEY_DOWN : XKB_KEY_UP);
 
-	compmask = XKB_STATE_MODS_DEPRESSED |
-	           XKB_STATE_MODS_LATCHED |
-	           XKB_STATE_MODS_LOCKED |
-	           XKB_STATE_MODS_EFFECTIVE;
+	compmask = XKB_STATE_MODS_DEPRESSED | XKB_STATE_MODS_LATCHED
+		   | XKB_STATE_MODS_LOCKED | XKB_STATE_MODS_EFFECTIVE;
 
 	if (!(comp & compmask))
 		return;
@@ -287,7 +291,7 @@ static void keyboard_apply_mods(struct keyboard* self, xkb_keycode_t code,
 }
 
 static struct table_entry* match_level(struct keyboard* self,
-                                       struct table_entry* entry)
+				       struct table_entry* entry)
 {
 	xkb_keysym_t symbol = entry->symbol;
 
@@ -299,8 +303,8 @@ static struct table_entry* match_level(struct keyboard* self,
 		if (entry->level == level)
 			return entry;
 
-		if (++entry >= &self->lookup_table[self->lookup_table_length] ||
-		    entry->symbol != symbol)
+		if (++entry >= &self->lookup_table[self->lookup_table_length]
+		    || entry->symbol != symbol)
 			break;
 	}
 
@@ -334,42 +338,44 @@ static bool keyboard_symbol_is_mod(xkb_keysym_t symbol)
 static void send_key(struct keyboard* self, xkb_keycode_t code, bool is_pressed)
 {
 	zwp_virtual_keyboard_v1_key(self->virtual_keyboard, 0, code - 8,
-	                            is_pressed ? WL_KEYBOARD_KEY_STATE_PRESSED
-	                                       : WL_KEYBOARD_KEY_STATE_RELEASED);
+				    is_pressed
+					    ? WL_KEYBOARD_KEY_STATE_PRESSED
+					    : WL_KEYBOARD_KEY_STATE_RELEASED);
 }
 
 static void save_mods(struct keyboard* self, struct kb_mods* mods)
 {
-	mods->depressed = xkb_state_serialize_mods(self->state,
-			XKB_STATE_MODS_DEPRESSED);
-	mods->latched = xkb_state_serialize_mods(self->state,
-			XKB_STATE_MODS_LATCHED);
-	mods->locked = xkb_state_serialize_mods(self->state,
-			XKB_STATE_MODS_LOCKED);
+	mods->depressed =
+		xkb_state_serialize_mods(self->state, XKB_STATE_MODS_DEPRESSED);
+	mods->latched =
+		xkb_state_serialize_mods(self->state, XKB_STATE_MODS_LATCHED);
+	mods->locked =
+		xkb_state_serialize_mods(self->state, XKB_STATE_MODS_LOCKED);
 }
 
 static void restore_mods(struct keyboard* self, struct kb_mods* mods)
 {
 	xkb_state_update_mask(self->state, mods->depressed, mods->latched,
-			mods->locked, XKB_STATE_MODS_DEPRESSED,
-			XKB_STATE_MODS_LATCHED, XKB_STATE_MODS_LOCKED);
+			      mods->locked, XKB_STATE_MODS_DEPRESSED,
+			      XKB_STATE_MODS_LATCHED, XKB_STATE_MODS_LOCKED);
 }
 
 static void send_key_with_level(struct keyboard* self, xkb_keycode_t code,
-		bool is_pressed, int level)
+				bool is_pressed, int level)
 {
 	struct kb_mods save;
 	save_mods(self, &save);
 
 	xkb_mod_mask_t mods = 0;
-	xkb_keymap_key_get_mods_for_level(self->keymap, code, 0, level,
-			&mods, 1);
+	xkb_keymap_key_get_mods_for_level(self->keymap, code, 0, level, &mods,
+					  1);
 	xkb_state_update_mask(self->state, mods, 0, 0, XKB_STATE_MODS_DEPRESSED,
-			XKB_STATE_MODS_LATCHED, XKB_STATE_MODS_LOCKED);
+			      XKB_STATE_MODS_LATCHED, XKB_STATE_MODS_LOCKED);
 	keyboard_send_mods(self);
 
-	nvnc_log(NVNC_LOG_DEBUG, "send key with level: old mods: %x, new mods: %x",
-			save.latched | save.locked | save.depressed, mods);
+	nvnc_log(NVNC_LOG_DEBUG,
+		 "send key with level: old mods: %x, new mods: %x",
+		 save.latched | save.locked | save.depressed, mods);
 
 	send_key(self, code, is_pressed);
 
@@ -378,7 +384,7 @@ static void send_key_with_level(struct keyboard* self, xkb_keycode_t code,
 }
 
 static bool update_key_state(struct keyboard* self, xkb_keycode_t code,
-		bool is_pressed)
+			     bool is_pressed)
 {
 	bool was_pressed = intset_is_set(&self->key_state, code);
 	if (was_pressed == is_pressed)
@@ -397,8 +403,9 @@ void keyboard_feed(struct keyboard* self, xkb_keysym_t symbol, bool is_pressed)
 	struct table_entry* entry = keyboard_find_symbol(self, symbol);
 	if (!entry) {
 		char name[256];
-		nvnc_log(NVNC_LOG_ERROR, "Failed to look up keyboard symbol: %s",
-		          get_symbol_name(symbol, name, sizeof(name)));
+		nvnc_log(NVNC_LOG_ERROR,
+			 "Failed to look up keyboard symbol: %s",
+			 get_symbol_name(symbol, name, sizeof(name)));
 		return;
 	}
 
@@ -425,11 +432,11 @@ void keyboard_feed(struct keyboard* self, xkb_keysym_t symbol, bool is_pressed)
 		send_key(self, entry->code, is_pressed);
 	else
 		send_key_with_level(self, entry->code, is_pressed,
-				entry->level);
+				    entry->level);
 }
 
 void keyboard_feed_code(struct keyboard* self, xkb_keycode_t code,
-		bool is_pressed)
+			bool is_pressed)
 {
 	if (update_key_state(self, code, is_pressed)) {
 		keyboard_apply_mods(self, code, is_pressed);

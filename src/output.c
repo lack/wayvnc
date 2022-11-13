@@ -31,9 +31,8 @@
 #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-void output_transform_coord(const struct output* self,
-                            uint32_t src_x, uint32_t src_y,
-                            uint32_t* dst_x, uint32_t* dst_y)
+void output_transform_coord(const struct output* self, uint32_t src_x,
+			    uint32_t src_y, uint32_t* dst_x, uint32_t* dst_y)
 {
 	switch (self->transform) {
 	case WL_OUTPUT_TRANSFORM_NORMAL:
@@ -71,11 +70,11 @@ void output_transform_coord(const struct output* self,
 	}
 }
 
-void output_transform_box_coord(const struct output* self,
-                                uint32_t src_x0, uint32_t src_y0,
-                                uint32_t src_x1, uint32_t src_y1,
-                                uint32_t* dst_x0, uint32_t* dst_y0,
-				uint32_t* dst_x1, uint32_t* dst_y1)
+void output_transform_box_coord(const struct output* self, uint32_t src_x0,
+				uint32_t src_y0, uint32_t src_x1,
+				uint32_t src_y1, uint32_t* dst_x0,
+				uint32_t* dst_y0, uint32_t* dst_x1,
+				uint32_t* dst_y1)
 {
 	uint32_t x0 = 0, y0 = 0, x1 = 0, y1 = 0;
 
@@ -105,14 +104,14 @@ static bool is_transform_90_degrees(enum wl_output_transform transform)
 
 uint32_t output_get_transformed_width(const struct output* self)
 {
-	return is_transform_90_degrees(self->transform)
-	      ? self->height : self->width;
+	return is_transform_90_degrees(self->transform) ? self->height
+							: self->width;
 }
 
 uint32_t output_get_transformed_height(const struct output* self)
 {
-	return is_transform_90_degrees(self->transform)
-	      ? self->width : self->height;
+	return is_transform_90_degrees(self->transform) ? self->width
+							: self->height;
 }
 
 static void output_handle_geometry(void* data, struct wl_output* wl_output,
@@ -143,7 +142,8 @@ static void output_handle_mode(void* data, struct wl_output* wl_output,
 	if (!(flags & WL_OUTPUT_MODE_CURRENT))
 		return;
 
-	if (width != (int32_t)output->width || height != (int32_t)output->height)
+	if (width != (int32_t)output->width
+	    || height != (int32_t)output->height)
 		output->is_dimension_changed = true;
 
 	output->width = width;
@@ -188,7 +188,7 @@ void output_list_destroy(struct wl_list* list)
 	struct output* output;
 	struct output* tmp;
 
-	wl_list_for_each_safe(output, tmp, list, link) {
+	wl_list_for_each_safe (output, tmp, list, link) {
 		wl_list_remove(&output->link);
 		output_destroy(output);
 	}
@@ -205,24 +205,23 @@ struct output* output_new(struct wl_output* wl_output, uint32_t id)
 	output->wl_output = wl_output;
 	output->id = id;
 
-	wl_output_add_listener(output->wl_output, &output_listener,
-			output);
+	wl_output_add_listener(output->wl_output, &output_listener, output);
 
 	return output;
 }
 
 void output_logical_position(void* data, struct zxdg_output_v1* xdg_output,
-                             int32_t x, int32_t y)
+			     int32_t x, int32_t y)
 {
 }
 
 void output_logical_size(void* data, struct zxdg_output_v1* xdg_output,
-                         int32_t width, int32_t height)
+			 int32_t width, int32_t height)
 {
 }
 
 void output_name(void* data, struct zxdg_output_v1* xdg_output,
-                 const char* name)
+		 const char* name)
 {
 	struct output* self = data;
 
@@ -230,7 +229,7 @@ void output_name(void* data, struct zxdg_output_v1* xdg_output,
 }
 
 void output_description(void* data, struct zxdg_output_v1* xdg_output,
-                        const char* description)
+			const char* description)
 {
 	struct output* self = data;
 
@@ -246,19 +245,19 @@ static const struct zxdg_output_v1_listener xdg_output_listener = {
 };
 
 void output_set_xdg_output(struct output* self,
-                           struct zxdg_output_v1* xdg_output)
+			   struct zxdg_output_v1* xdg_output)
 {
 	self->xdg_output = xdg_output;
 
 	zxdg_output_v1_add_listener(self->xdg_output, &xdg_output_listener,
-	                            self);
+				    self);
 }
 
 struct output* output_find_by_id(struct wl_list* list, uint32_t id)
 {
 	struct output* output;
 
-	wl_list_for_each(output, list, link)
+	wl_list_for_each (output, list, link)
 		if (output->id == id)
 			return output;
 
@@ -269,7 +268,7 @@ struct output* output_find_by_name(struct wl_list* list, const char* name)
 {
 	struct output* output;
 
-	wl_list_for_each(output, list, link)
+	wl_list_for_each (output, list, link)
 		if (strcmp(output->name, name) == 0)
 			return output;
 
@@ -280,24 +279,23 @@ struct output* output_first(struct wl_list* list)
 {
 	struct output* output;
 
-	wl_list_for_each(output, list, link)
+	wl_list_for_each (output, list, link)
 		return output;
 
 	return output;
 }
 
 struct output* output_cycle(const struct wl_list* list,
-		const struct output* current,
-		enum output_cycle_direction direction)
+			    const struct output* current,
+			    enum output_cycle_direction direction)
 {
 	const struct wl_list* iter = current ? &current->link : list;
-	iter = (direction == OUTPUT_CYCLE_FORWARD) ?
-		iter->next : iter->prev;
+	iter = (direction == OUTPUT_CYCLE_FORWARD) ? iter->next : iter->prev;
 	if (iter == list) {
 		if (wl_list_empty(list))
 			return NULL;
-		iter = (direction == OUTPUT_CYCLE_FORWARD) ?
-			iter->next : iter->prev;
+		iter = (direction == OUTPUT_CYCLE_FORWARD) ? iter->next
+							   : iter->prev;
 	}
 	struct output* output;
 	return wl_container_of(iter, output, link);

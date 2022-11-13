@@ -27,13 +27,13 @@ struct credentials {
 };
 
 static int pam_return_pwd(int num_msg, const struct pam_message** msgm,
-                          struct pam_response** response, void* appdata_ptr)
+			  struct pam_response** response, void* appdata_ptr)
 {
 	struct credentials* cred = appdata_ptr;
 	struct pam_response* resp = calloc(sizeof(*response), num_msg);
 	for (int i = 0; i < num_msg; i++) {
 		resp[i].resp_retcode = PAM_SUCCESS;
-		switch(msgm[i]->msg_style) {
+		switch (msgm[i]->msg_style) {
 		case PAM_PROMPT_ECHO_OFF:
 			resp[i].resp = strdup(cred->password);
 			break;
@@ -61,19 +61,22 @@ bool pam_auth(const char* username, const char* password)
 	pam_handle_t* pamh;
 	int result = pam_start(service, username, &conv, &pamh);
 	if (result != PAM_SUCCESS) {
-		nvnc_log(NVNC_LOG_ERROR, "ERROR: PAM start failed: %s", pam_strerror(pamh, result));
+		nvnc_log(NVNC_LOG_ERROR, "ERROR: PAM start failed: %s",
+			 pam_strerror(pamh, result));
 		return false;
 	}
 
-	result = pam_authenticate(pamh, PAM_SILENT|PAM_DISALLOW_NULL_AUTHTOK);
+	result = pam_authenticate(pamh, PAM_SILENT | PAM_DISALLOW_NULL_AUTHTOK);
 	if (result != PAM_SUCCESS) {
-		nvnc_log(NVNC_LOG_ERROR, "PAM authenticate failed: %s", pam_strerror(pamh, result));
+		nvnc_log(NVNC_LOG_ERROR, "PAM authenticate failed: %s",
+			 pam_strerror(pamh, result));
 		goto error;
 	}
 
 	result = pam_acct_mgmt(pamh, 0);
 	if (result != PAM_SUCCESS) {
-		nvnc_log(NVNC_LOG_ERROR, "PAM account management failed: %s", pam_strerror(pamh, result));
+		nvnc_log(NVNC_LOG_ERROR, "PAM account management failed: %s",
+			 pam_strerror(pamh, result));
 		goto error;
 	}
 

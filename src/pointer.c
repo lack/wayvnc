@@ -59,19 +59,21 @@ static void pointer_set_button_mask(struct pointer* self, uint32_t t,
 
 	if ((diff & NVNC_SCROLL_UP) && !(mask & NVNC_SCROLL_UP))
 		zwlr_virtual_pointer_v1_axis_discrete(self->pointer, t, vaxis,
-				wl_fixed_from_int(-15), -1);
+						      wl_fixed_from_int(-15),
+						      -1);
 
 	if ((diff & NVNC_SCROLL_DOWN) && !(mask & NVNC_SCROLL_DOWN))
 		zwlr_virtual_pointer_v1_axis_discrete(self->pointer, t, vaxis,
-				wl_fixed_from_int(15), 1);
+						      wl_fixed_from_int(15), 1);
 
 	if ((diff & NVNC_SCROLL_LEFT) && !(mask & NVNC_SCROLL_LEFT))
 		zwlr_virtual_pointer_v1_axis_discrete(self->pointer, t, haxis,
-				wl_fixed_from_int(-15), -1);
+						      wl_fixed_from_int(-15),
+						      -1);
 
 	if ((diff & NVNC_SCROLL_RIGHT) && !(mask & NVNC_SCROLL_RIGHT))
 		zwlr_virtual_pointer_v1_axis_discrete(self->pointer, t, haxis,
-				wl_fixed_from_int(15), 1);
+						      wl_fixed_from_int(15), 1);
 
 	self->current_mask = mask;
 }
@@ -82,10 +84,9 @@ void pointer_set(struct pointer* self, uint32_t x, uint32_t y,
 	uint32_t t = gettime_ms();
 
 	if (x != self->current_x || y != self->current_y)
-		zwlr_virtual_pointer_v1_motion_absolute(self->pointer, t,
-		                                        x, y,
-		                                        self->output->width,
-		                                        self->output->height);
+		zwlr_virtual_pointer_v1_motion_absolute(self->pointer, t, x, y,
+							self->output->width,
+							self->output->height);
 
 	self->current_x = x;
 	self->current_y = y;

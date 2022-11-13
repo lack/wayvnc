@@ -55,8 +55,8 @@ enum wv_buffer_type wv_buffer_get_available_types(void)
 	return type;
 }
 
-struct wv_buffer* wv_buffer_create_shm(int width,
-		int height, int stride, uint32_t fourcc)
+struct wv_buffer* wv_buffer_create_shm(int width, int height, int stride,
+				       uint32_t fourcc)
 {
 	assert(wl_shm);
 	enum wl_shm_format wl_fmt = fourcc_to_wl_shm(fourcc);
@@ -77,7 +77,7 @@ struct wv_buffer* wv_buffer_create_shm(int width,
 		goto failure;
 
 	self->pixels = mmap(NULL, self->size, PROT_READ | PROT_WRITE,
-			MAP_SHARED, fd, 0);
+			    MAP_SHARED, fd, 0);
 	if (!self->pixels)
 		goto mmap_failure;
 
@@ -86,14 +86,14 @@ struct wv_buffer* wv_buffer_create_shm(int width,
 		goto pool_failure;
 
 	self->wl_buffer = wl_shm_pool_create_buffer(pool, 0, width, height,
-			stride, wl_fmt);
+						    stride, wl_fmt);
 	wl_shm_pool_destroy(pool);
 	if (!self->wl_buffer)
 		goto shm_failure;
 
 	// TODO: Get the pixel size from the format instead of assuming it's 4.
 	self->nvnc_fb = nvnc_fb_from_buffer(self->pixels, width, height, fourcc,
-			stride / 4);
+					    stride / 4);
 	if (!self->nvnc_fb) {
 		goto nvnc_fb_failure;
 	}
@@ -118,7 +118,7 @@ failure:
 
 #ifdef ENABLE_SCREENCOPY_DMABUF
 static struct wv_buffer* wv_buffer_create_dmabuf(int width, int height,
-		uint32_t fourcc)
+						 uint32_t fourcc)
 {
 	assert(zwp_linux_dmabuf);
 	assert(gbm_device);
@@ -133,7 +133,7 @@ static struct wv_buffer* wv_buffer_create_dmabuf(int width, int height,
 	self->format = fourcc;
 
 	self->bo = gbm_bo_create(gbm_device, width, height, fourcc,
-			GBM_BO_USE_RENDERING);
+				 GBM_BO_USE_RENDERING);
 	if (!self->bo)
 		goto bo_failure;
 
@@ -149,10 +149,11 @@ static struct wv_buffer* wv_buffer_create_dmabuf(int width, int height,
 	if (fd < 0)
 		goto fd_failure;
 
-	zwp_linux_buffer_params_v1_add(params, fd, 0, offset, stride,
-			mod >> 32, mod & 0xffffffff);
-	self->wl_buffer = zwp_linux_buffer_params_v1_create_immed(params, width,
-			height, fourcc, /* flags */ 0);
+	zwp_linux_buffer_params_v1_add(params, fd, 0, offset, stride, mod >> 32,
+				       mod & 0xffffffff);
+	self->wl_buffer =
+		zwp_linux_buffer_params_v1_create_immed(params, width, height,
+							fourcc, /* flags */ 0);
 	zwp_linux_buffer_params_v1_destroy(params);
 	close(fd);
 
@@ -182,7 +183,7 @@ bo_failure:
 #endif
 
 struct wv_buffer* wv_buffer_create(enum wv_buffer_type type, int width,
-		int height, int stride, uint32_t fourcc)
+				   int height, int stride, uint32_t fourcc)
 {
 	switch (type) {
 	case WV_BUFFER_SHM:
@@ -236,10 +237,10 @@ void wv_buffer_destroy(struct wv_buffer* self)
 }
 
 void wv_buffer_damage_rect(struct wv_buffer* self, int x, int y, int width,
-		int height)
+			   int height)
 {
 	pixman_region_union_rect(&self->damage, &self->damage, x, y, width,
-			height);
+				 height);
 }
 
 void wv_buffer_damage_whole(struct wv_buffer* self)
@@ -253,7 +254,8 @@ void wv_buffer_damage_clear(struct wv_buffer* self)
 }
 
 struct wv_buffer_pool* wv_buffer_pool_create(enum wv_buffer_type type,
-		int width, int height, int stride, uint32_t format)
+					     int width, int height, int stride,
+					     uint32_t format)
 {
 	struct wv_buffer_pool* self = calloc(1, sizeof(*self));
 	if (!self)
@@ -285,8 +287,8 @@ void wv_buffer_pool_destroy(struct wv_buffer_pool* pool)
 }
 
 void wv_buffer_pool_resize(struct wv_buffer_pool* pool,
-		enum wv_buffer_type type, int width, int height, int stride,
-		uint32_t format)
+			   enum wv_buffer_type type, int width, int height,
+			   int stride, uint32_t format)
 {
 	if (pool->type != type || pool->width != width || pool->height != height
 	    || pool->stride != stride || pool->format != format) {
@@ -301,7 +303,7 @@ void wv_buffer_pool_resize(struct wv_buffer_pool* pool,
 }
 
 static bool wv_buffer_pool_match_buffer(struct wv_buffer_pool* pool,
-		struct wv_buffer* buffer)
+					struct wv_buffer* buffer)
 {
 	if (pool->type != buffer->type)
 		return false;
@@ -311,7 +313,7 @@ static bool wv_buffer_pool_match_buffer(struct wv_buffer_pool* pool,
 		if (pool->stride != buffer->stride)
 			return false;
 
-		/* fall-through */
+			/* fall-through */
 #ifdef ENABLE_SCREENCOPY_DMABUF
 	case WV_BUFFER_DMABUF:
 #endif
@@ -346,16 +348,16 @@ struct wv_buffer* wv_buffer_pool_acquire(struct wv_buffer_pool* pool)
 	}
 
 	buffer = wv_buffer_create(pool->type, pool->width, pool->height,
-			pool->stride, pool->format);
+				  pool->stride, pool->format);
 	if (buffer)
 		nvnc_fb_set_release_fn(buffer->nvnc_fb,
-				wv_buffer_pool__on_release, pool);
+				       wv_buffer_pool__on_release, pool);
 
 	return buffer;
 }
 
 void wv_buffer_pool_release(struct wv_buffer_pool* pool,
-		struct wv_buffer* buffer)
+			    struct wv_buffer* buffer)
 {
 	wv_buffer_damage_clear(buffer);
 

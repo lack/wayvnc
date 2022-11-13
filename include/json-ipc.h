@@ -33,7 +33,10 @@ struct jsonipc_error {
 	json_t* data;
 };
 
-#define JSONIPC_ERR_INIT {0,NULL}
+#define JSONIPC_ERR_INIT \
+	{ \
+		0, NULL \
+	}
 
 struct jsonipc_response {
 	int code;
@@ -44,25 +47,26 @@ struct jsonipc_response {
 };
 
 void jsonipc_error_set_new(struct jsonipc_error*, int code, json_t* data);
-void jsonipc_error_printf(struct jsonipc_error*, int code, const char* fmt, ...);
+void jsonipc_error_printf(struct jsonipc_error*, int code, const char* fmt,
+			  ...);
 void jsonipc_error_set_from_errno(struct jsonipc_error*, const char* context);
 void jsonipc_error_cleanup(struct jsonipc_error*);
 
 struct jsonipc_request* jsonipc_request_parse_new(json_t* root,
-		struct jsonipc_error* err);
+						  struct jsonipc_error* err);
 struct jsonipc_request* jsonipc_request_new(const char* method, json_t* params);
 struct jsonipc_request* jsonipc_event_new(const char* method, json_t* params);
 struct jsonipc_request* jsonipc_event_parse_new(json_t* root,
-		struct jsonipc_error* err);
+						struct jsonipc_error* err);
 json_t* jsonipc_request_pack(struct jsonipc_request*, json_error_t* err);
 void jsonipc_request_destroy(struct jsonipc_request*);
 
 struct jsonipc_response* jsonipc_response_parse_new(json_t* root,
-		struct jsonipc_error* err);
+						    struct jsonipc_error* err);
 struct jsonipc_response* jsonipc_response_new(int code, json_t* data,
-		json_t* id);
+					      json_t* id);
 struct jsonipc_response* jsonipc_error_response_new(struct jsonipc_error* err,
-		json_t* id);
+						    json_t* id);
 void jsonipc_response_destroy(struct jsonipc_response*);
 json_t* jsonipc_response_pack(struct jsonipc_response*, json_error_t* err);
 

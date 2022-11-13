@@ -44,6 +44,7 @@ struct wayvncctl {
 static int wayvncctl_usage(FILE* stream, int rc)
 {
 	static const char* usage =
+		// clang-format off
 "Usage: wayvncctl [options] [command [--param1=value1 ...]]\n"
 "\n"
 "Connects to and interacts with a running wayvnc instance."
@@ -58,6 +59,7 @@ static int wayvncctl_usage(FILE* stream, int rc)
 "    -v,--verbose                         Be more verbose.\n"
 "    -h,--help                            Get help (this text).\n"
 "\n";
+	// clang-format off
 
 	fprintf(stream, "%s", usage);
 

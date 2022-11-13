@@ -67,13 +67,12 @@ static void on_receive(void* handler)
 
 	if (ctx->mem_size)
 		nvnc_send_cut_text(ctx->data_control->server, ctx->mem_data,
-				ctx->mem_size);
+				   ctx->mem_size);
 
 	aml_stop(aml_get_default(), handler);
 }
 
-static void receive_data(void* data,
-	struct zwlr_data_control_offer_v1* offer)
+static void receive_data(void* data, struct zwlr_data_control_offer_v1* offer)
 {
 	struct data_control* self = data;
 	int pipe_fd[2];
@@ -106,8 +105,8 @@ static void receive_data(void* data,
 		return;
 	}
 
-	struct aml_handler* handler = aml_handler_new(ctx->fd, on_receive,
-			ctx, destroy_receive_context);
+	struct aml_handler* handler = aml_handler_new(ctx->fd, on_receive, ctx,
+						      destroy_receive_context);
 	if (!handler) {
 		close(ctx->fd);
 		free(ctx);
@@ -118,7 +117,8 @@ static void receive_data(void* data,
 	aml_unref(handler);
 }
 
-static void data_control_offer(void* data,
+static void data_control_offer(
+	void* data,
 	struct zwlr_data_control_offer_v1* zwlr_data_control_offer_v1,
 	const char* mime_type)
 {
@@ -137,17 +137,21 @@ struct zwlr_data_control_offer_v1_listener data_control_offer_listener = {
 	data_control_offer
 };
 
-static void data_control_device_offer(void* data,
+static void data_control_device_offer(
+	void* data,
 	struct zwlr_data_control_device_v1* zwlr_data_control_device_v1,
 	struct zwlr_data_control_offer_v1* id)
 {
 	if (!id)
 		return;
 
-	zwlr_data_control_offer_v1_add_listener(id, &data_control_offer_listener, data);
+	zwlr_data_control_offer_v1_add_listener(id,
+						&data_control_offer_listener,
+						data);
 }
 
-static void data_control_device_selection(void* data,
+static void data_control_device_selection(
+	void* data,
 	struct zwlr_data_control_device_v1* zwlr_data_control_device_v1,
 	struct zwlr_data_control_offer_v1* id)
 {
@@ -158,13 +162,15 @@ static void data_control_device_selection(void* data,
 	}
 }
 
-static void data_control_device_finished(void* data,
+static void data_control_device_finished(
+	void* data,
 	struct zwlr_data_control_device_v1* zwlr_data_control_device_v1)
 {
 	zwlr_data_control_device_v1_destroy(zwlr_data_control_device_v1);
 }
 
-static void data_control_device_primary_selection(void* data,
+static void data_control_device_primary_selection(
+	void* data,
 	struct zwlr_data_control_device_v1* zwlr_data_control_device_v1,
 	struct zwlr_data_control_offer_v1* id)
 {
@@ -176,18 +182,18 @@ static void data_control_device_primary_selection(void* data,
 	}
 }
 
-static struct zwlr_data_control_device_v1_listener data_control_device_listener = {
-	.data_offer = data_control_device_offer,
-	.selection = data_control_device_selection,
-	.finished = data_control_device_finished,
-	.primary_selection = data_control_device_primary_selection
-};
+static struct zwlr_data_control_device_v1_listener
+	data_control_device_listener = {
+		.data_offer = data_control_device_offer,
+		.selection = data_control_device_selection,
+		.finished = data_control_device_finished,
+		.primary_selection = data_control_device_primary_selection
+	};
 
-static void
-data_control_source_send(void* data,
+static void data_control_source_send(
+	void* data,
 	struct zwlr_data_control_source_v1* zwlr_data_control_source_v1,
-	const char* mime_type,
-	int32_t fd)
+	const char* mime_type, int32_t fd)
 {
 	struct data_control* self = data;
 	char* d = self->cb_data;
@@ -204,7 +210,8 @@ data_control_source_send(void* data,
 	close(fd);
 }
 
-static void data_control_source_cancelled(void* data,
+static void data_control_source_cancelled(
+	void* data,
 	struct zwlr_data_control_source_v1* zwlr_data_control_source_v1)
 {
 	struct data_control* self = data;
@@ -223,33 +230,47 @@ struct zwlr_data_control_source_v1_listener data_control_source_listener = {
 	.cancelled = data_control_source_cancelled
 };
 
-static struct zwlr_data_control_source_v1* set_selection(struct data_control* self, bool primary) {
+static struct zwlr_data_control_source_v1* set_selection(
+	struct data_control* self, bool primary)
+{
 	struct zwlr_data_control_source_v1* selection;
-	selection = zwlr_data_control_manager_v1_create_data_source(self->manager);
+	selection =
+		zwlr_data_control_manager_v1_create_data_source(self->manager);
 	if (selection == NULL) {
-		nvnc_log(NVNC_LOG_ERROR, "zwlr_data_control_manager_v1_create_data_source() failed");
+		nvnc_log(
+			NVNC_LOG_ERROR,
+			"zwlr_data_control_manager_v1_create_data_source() failed");
 		free(self->cb_data);
 		self->cb_data = NULL;
 		return NULL;
 	}
 
-	zwlr_data_control_source_v1_add_listener(selection, &data_control_source_listener, self);
+	zwlr_data_control_source_v1_add_listener(selection,
+						 &data_control_source_listener,
+						 self);
 	zwlr_data_control_source_v1_offer(selection, self->mime_type);
 
 	if (primary)
-		zwlr_data_control_device_v1_set_primary_selection(self->device, selection);
+		zwlr_data_control_device_v1_set_primary_selection(self->device,
+								  selection);
 	else
-		zwlr_data_control_device_v1_set_selection(self->device, selection);
+		zwlr_data_control_device_v1_set_selection(self->device,
+							  selection);
 
 	return selection;
 }
 
-void data_control_init(struct data_control* self, struct wl_display* wl_display, struct nvnc* server, struct wl_seat* seat)
+void data_control_init(struct data_control* self, struct wl_display* wl_display,
+		       struct nvnc* server, struct wl_seat* seat)
 {
 	self->wl_display = wl_display;
 	self->server = server;
-	self->device = zwlr_data_control_manager_v1_get_data_device(self->manager, seat);
-	zwlr_data_control_device_v1_add_listener(self->device, &data_control_device_listener, self);
+	self->device =
+		zwlr_data_control_manager_v1_get_data_device(self->manager,
+							     seat);
+	zwlr_data_control_device_v1_add_listener(self->device,
+						 &data_control_device_listener,
+						 self);
 	self->selection = NULL;
 	self->primary_selection = NULL;
 	self->cb_data = NULL;
@@ -271,7 +292,8 @@ void data_control_destroy(struct data_control* self)
 	free(self->cb_data);
 }
 
-void data_control_to_clipboard(struct data_control* self, const char* text, size_t len)
+void data_control_to_clipboard(struct data_control* self, const char* text,
+			       size_t len)
 {
 	if (!len) {
 		nvnc_log(NVNC_LOG_ERROR, "%s called with 0 length", __func__);

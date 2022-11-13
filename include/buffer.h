@@ -67,19 +67,20 @@ struct wv_buffer_pool {
 enum wv_buffer_type wv_buffer_get_available_types(void);
 
 struct wv_buffer* wv_buffer_create(enum wv_buffer_type, int width, int height,
-		int stride, uint32_t fourcc);
+				   int stride, uint32_t fourcc);
 void wv_buffer_destroy(struct wv_buffer* self);
 
 void wv_buffer_damage_rect(struct wv_buffer* self, int x, int y, int width,
-		int height);
+			   int height);
 void wv_buffer_damage_whole(struct wv_buffer* self);
 void wv_buffer_damage_clear(struct wv_buffer* self);
 
 struct wv_buffer_pool* wv_buffer_pool_create(enum wv_buffer_type, int width,
-		int height, int stride, uint32_t format);
+					     int height, int stride,
+					     uint32_t format);
 void wv_buffer_pool_destroy(struct wv_buffer_pool* pool);
 void wv_buffer_pool_resize(struct wv_buffer_pool* pool, enum wv_buffer_type,
-		int width, int height, int stride, uint32_t format);
+			   int width, int height, int stride, uint32_t format);
 struct wv_buffer* wv_buffer_pool_acquire(struct wv_buffer_pool* pool);
 void wv_buffer_pool_release(struct wv_buffer_pool* pool,
-		struct wv_buffer* buffer);
+			    struct wv_buffer* buffer);

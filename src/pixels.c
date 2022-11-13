@@ -27,8 +27,10 @@ enum wl_shm_format fourcc_to_wl_shm(uint32_t in)
 	assert(!(in & DRM_FORMAT_BIG_ENDIAN));
 
 	switch (in) {
-	case DRM_FORMAT_ARGB8888: return WL_SHM_FORMAT_ARGB8888;
-	case DRM_FORMAT_XRGB8888: return WL_SHM_FORMAT_XRGB8888;
+	case DRM_FORMAT_ARGB8888:
+		return WL_SHM_FORMAT_ARGB8888;
+	case DRM_FORMAT_XRGB8888:
+		return WL_SHM_FORMAT_XRGB8888;
 	}
 
 	return in;
@@ -37,8 +39,10 @@ enum wl_shm_format fourcc_to_wl_shm(uint32_t in)
 uint32_t fourcc_from_wl_shm(enum wl_shm_format in)
 {
 	switch (in) {
-	case WL_SHM_FORMAT_ARGB8888: return DRM_FORMAT_ARGB8888;
-	case WL_SHM_FORMAT_XRGB8888: return DRM_FORMAT_XRGB8888;
+	case WL_SHM_FORMAT_ARGB8888:
+		return DRM_FORMAT_ARGB8888;
+	case WL_SHM_FORMAT_XRGB8888:
+		return DRM_FORMAT_XRGB8888;
 	default:;
 	}
 

@@ -28,5 +28,5 @@ void* ctl_client_userdata(struct ctl_client*);
 
 #define PRINT_JSON 0x00000001
 
-int ctl_client_run_command(struct ctl_client* self,
-		int argc, char* argv[], unsigned flags);
+int ctl_client_run_command(struct ctl_client* self, int argc, char* argv[],
+			   unsigned flags);

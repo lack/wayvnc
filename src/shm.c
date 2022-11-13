@@ -26,20 +26,21 @@
 #if defined(HAVE_MEMFD) && !defined(HAVE_MEMFD_CREATE)
 #include <sys/syscall.h>
 
-static inline int memfd_create(const char *name, unsigned int flags) {
+static inline int memfd_create(const char* name, unsigned int flags)
+{
 	return syscall(SYS_memfd_create, name, flags);
 }
 #endif
 
 #if !defined(HAVE_MEMFD) && !defined(__FreeBSD__)
-static void randname(char *buf)
+static void randname(char* buf)
 {
 	struct timespec ts;
 	clock_gettime(CLOCK_REALTIME, &ts);
 	long r = ts.tv_nsec;
 
 	for (int i = 0; i < 6; ++i) {
-		buf[i] = 'A'+(r&15)+(r&16)*2;
+		buf[i] = 'A' + (r & 15) + (r & 16) * 2;
 		r >>= 5;
 	}
 }

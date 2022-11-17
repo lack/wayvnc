@@ -130,6 +130,10 @@ if host_system == 'linux' and get_option('systemtap') and cc.has_header('sys/sdt
 	config.set('HAVE_USDT', true)
 endif
 
+if host_system == 'linux'
+	config.set('HAVE_INOTIFY', true)
+endif
+
 if cc.has_function('memfd_create')
 	config.set('HAVE_MEMFD', true)
 	config.set('HAVE_MEMFD_CREATE', true)

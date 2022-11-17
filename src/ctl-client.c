@@ -24,6 +24,7 @@
 #include <poll.h>
 #include <signal.h>
 #include <assert.h>
+#include <libgen.h>
 #include <jansson.h>
 
 #include "json-ipc.h"
@@ -31,6 +32,12 @@
 #include "ctl-server.h"
 #include "strlcpy.h"
 #include "util.h"
+
+#include "config.h"
+
+#ifdef HAVE_INOTIFY
+#include <sys/inotify.h>
+#endif
 
 #define LOG(level, fmt, ...) \
 	fprintf(stderr, "[%s:%d] <" level "> " fmt "\n", __FILE__, __LINE__, \
@@ -85,26 +92,85 @@ socket_failure:
 	return NULL;
 }
 
+static int setup_inotify(const char* socket_path)
+{
+#ifdef HAVE_INOTIFY
+	int fd = inotify_init1(IN_NONBLOCK);
+	if (fd > -1) {
+		// Note: Add watch before we check stat() to avoid races
+		char* socket_dir = dirname(strdup(socket_path));
+		DEBUG("Setting up inotify watch for \"%s\"", socket_dir);
+		if (inotify_add_watch(fd, socket_dir,
+				IN_ONLYDIR | IN_CREATE) == -1) {
+			WARN("Failed to set up inotify watch for \"%s\": %m", socket_dir);
+			close(fd);
+			fd = -1;
+		}
+		free(socket_dir);
+	}
+	return fd;
+#else
+	return -1;
+#endif
+}
+
+static int poll_inotify(int fd, int timeout)
+{
+#ifdef HAVE_INOTIFY
+	struct pollfd pfd = {
+		.fd = fd,
+		.events = POLLIN,
+		.revents = 0
+	};
+	char discard[256];
+	DEBUG("Waiting for inotify events...");
+	int n = poll(&pfd, 1, -1);
+	if (n == -1)
+		WARN("Error waiting for a response: %m");
+	else if (n == 0)
+		WARN("Timeout waiting for a response");
+	else 
+		// The event itself doesnt matter, since we only
+		// registered for file creation, and our stat check
+		// filters for the relevant filename
+		while(read(fd, discard, sizeof(discard)) > 0);
+	return n;
+#else
+	return -1;
+#endif
+}
+
 static int wait_for_socket(const char* socket_path, int timeout)
 {
+	// TODO: Support arbitrary timeouts?
+	assert(timeout == 0 || timeout == -1);
 	bool needs_log = true;
 	struct stat sb;
+	int in_fd = setup_inotify(socket_path);;
+	if (in_fd == -1) {
+		DEBUG("Polling stat() to wait for \"%s\"", socket_path);
+	}
 	while (stat(socket_path, &sb) != 0) {
 		if (timeout == 0) {
 			WARN("Failed to find socket path \"%s\": %m",
 					socket_path);
-			return 1;
+			return -1;
 		}
 		if (needs_log) {
 			needs_log = false;
 			DEBUG("Waiting for socket path \"%s\" to appear",
 					socket_path);
 		}
-		if (usleep(50000) == -1) {
+		if (in_fd > -1) {
+			if (poll_inotify(in_fd, -1) <= 0)
+				break;
+		} else if (usleep(50000) == -1) {
 			WARN("Failed to wait for socket path: %m");
 			return -1;
 		}
 	}
+	if (in_fd > -1)
+		close(in_fd);
 	if (S_ISSOCK(sb.st_mode)) {
 		DEBUG("Found socket \"%s\"", socket_path);
 	} else {

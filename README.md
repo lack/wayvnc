@@ -55,6 +55,8 @@ xbps-install wayvnc
 pacman -S base-devel libglvnd libxkbcommon pixman gnutls jansson
 ```
 
+ERASE ME (please)
+
 #### For Fedora 31
 ```
 dnf install -y meson gcc ninja-build pkg-config egl-wayland egl-wayland-devel \

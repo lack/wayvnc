@@ -970,11 +970,12 @@ json_t* pack_connection_event_params(
 			"connection_count", new_connection_count);
 }
 
-int ctl_server_enqueue_event(struct ctl* self, const char* event_name,
+int ctl_server_enqueue_event(struct ctl* self, enum event_type evt_type,
 		json_t* params)
 {
+	const char* event_name = evt_list[evt_type].name;
 	char* param_str = json_dumps(params, JSON_COMPACT);
-	nvnc_log(NVNC_LOG_DEBUG, "Enqueueing %s event: {%s", event_name, param_str);
+	nvnc_log(NVNC_LOG_DEBUG, "Enqueueing %s event: %s", event_name, param_str);
 	free(param_str);
 	struct jsonipc_request* event = jsonipc_event_new(event_name, params);
 	json_decref(params);
@@ -1006,7 +1007,7 @@ int ctl_server_enqueue_event(struct ctl* self, const char* event_name,
 }
 
 static void ctl_server_event_connect(struct ctl* self,
-		bool connected,
+		enum event_type evt_type,
 		const char* client_id,
 		const char* client_hostname,
 		const char* client_username,
@@ -1014,9 +1015,7 @@ static void ctl_server_event_connect(struct ctl* self,
 {
 	json_t* params = pack_connection_event_params(client_id, client_hostname,
 			client_username, new_connection_count);
-	ctl_server_enqueue_event(self,
-			connected ? "client-connected" : "client-disconnected",
-			params);
+	ctl_server_enqueue_event(self, evt_type, params);
 }
 
 void ctl_server_event_connected(struct ctl* self,
@@ -1025,8 +1024,8 @@ void ctl_server_event_connected(struct ctl* self,
 		const char* client_username,
 		int new_connection_count)
 {
-	ctl_server_event_connect(self, true, client_id, client_hostname,
-			client_username, new_connection_count);
+	ctl_server_event_connect(self, EVT_CLIENT_CONNECTED, client_id,
+			client_hostname, client_username, new_connection_count);
 }
 
 void ctl_server_event_disconnected(struct ctl* self,
@@ -1035,6 +1034,6 @@ void ctl_server_event_disconnected(struct ctl* self,
 		const char* client_username,
 		int new_connection_count)
 {
-	ctl_server_event_connect(self, false, client_id, client_hostname,
-			client_username, new_connection_count);
+	ctl_server_event_connect(self, EVT_CLIENT_DISCONNECTED, client_id,
+			client_hostname, client_username, new_connection_count);
 }
